@@ -1,0 +1,273 @@
+openapi: 3.0.3
+
+info:
+  title: OrgDirectory Service
+  version: 1.0.0
+  description: |
+    Второй веб-сервис, расположенный на URL `/orgdirectory`.
+
+    Реализует дополнительные операции, связанные с вызовом API первого сервиса
+    (Organization Service): фильтрацию организаций по количеству сотрудников и
+    сортировку организаций по заданному полю. Каждая операция размещена на
+    отдельном URL.
+
+    Все параметры, необходимые для выполнения операции, передаются в URL запроса.
+    Данные возвращаются в формате XML (`application/xml`).
+
+servers:
+  - url: https://{host}:{port}/orgdirectory
+    description: Сервер helios, на котором развёрнут сервис
+    variables:
+      host:
+        default: helios.cs.ifmo.ru
+        description: Хост сервера
+      port:
+        default: "8080"
+        description: Порт сервиса
+
+security: []
+
+tags:
+  - name: Directory
+    description: Дополнительные операции над организациями
+
+paths:
+  /filter/employees/{min-employees-count}/{max-employees-count}:
+    get:
+      tags: [Directory]
+      operationId: filterByEmployeesCount
+      summary: Отфильтровать организации по количеству сотрудников
+      description: |
+        Запрашивает у первого сервиса список организаций, подсчитывает количество
+        сотрудников (`Employee`, связь многие к одному) каждой организации и
+        возвращает организации, у которых количество сотрудников входит в
+        диапазон `[min-employees-count, max-employees-count]` включительно.
+      parameters:
+        - name: min-employees-count
+          in: path
+          required: true
+          description: Минимальное количество сотрудников (включительно)
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+        - name: max-employees-count
+          in: path
+          required: true
+          description: Максимальное количество сотрудников (включительно)
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+      responses:
+        '200':
+          description: Список организаций, удовлетворяющих условию
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/OrganizationList'
+              example: |
+                <?xml version="1.0" encoding="UTF-8"?>
+                <organizations>
+                  <total>1</total>
+                  <organization>
+                    <id>1</id>
+                    <name>Acme</name>
+                    <coordinates>
+                      <x>12.5</x>
+                      <y>34</y>
+                    </coordinates>
+                    <creationDate>2024-03-01</creationDate>
+                    <annualTurnover>1000000</annualTurnover>
+                    <fullName>Acme Corporation</fullName>
+                    <type>COMMERCIAL</type>
+                    <postalAddress>
+                      <street>Main street</street>
+                    </postalAddress>
+                  </organization>
+                </organizations>
+        '400':
+          description: Некорректные параметры диапазона (например, min больше max)
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Первый сервис недоступен или вернул ошибку
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /order/{param-name}/{desc}:
+    get:
+      tags: [Directory]
+      operationId: orderOrganizations
+      summary: Вывести список организаций, отсортированных по заданному полю
+      description: |
+        Запрашивает у первого сервиса список организаций и сортирует его по полю
+        `param-name` в порядке возрастания или убывания в зависимости от `desc`.
+      parameters:
+        - name: param-name
+          in: path
+          required: true
+          description: Имя поля организации, по которому выполняется сортировка
+          schema:
+            type: string
+            enum:
+              - id
+              - name
+              - coordinates.x
+              - coordinates.y
+              - creationDate
+              - annualTurnover
+              - fullName
+              - type
+              - postalAddress.street
+        - name: desc
+          in: path
+          required: true
+          description: Направление сортировки; `true` — по убыванию, `false` — по возрастанию
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        '200':
+          description: Отсортированный список организаций
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/OrganizationList'
+        '400':
+          description: Неизвестное поле или направление сортировки
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Первый сервис недоступен или вернул ошибку
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Organization:
+      type: object
+      xml:
+        name: organization
+      required:
+        - id
+        - name
+        - coordinates
+        - creationDate
+        - type
+        - postalAddress
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+          readOnly: true
+          description: Уникальный идентификатор, генерируется автоматически
+          xml:
+            attribute: true
+        name:
+          type: string
+          minLength: 1
+          description: Имя организации, не может быть null и пустым
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        creationDate:
+          type: string
+          format: date
+          readOnly: true
+          description: Дата создания, генерируется автоматически
+        annualTurnover:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Годовой оборот, может быть null, значение больше 0
+        fullName:
+          type: string
+          nullable: true
+          description: Полное наименование, может быть null
+        type:
+          $ref: '#/components/schemas/OrganizationType'
+        postalAddress:
+          $ref: '#/components/schemas/Address'
+
+    Coordinates:
+      type: object
+      xml:
+        name: coordinates
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: number
+          format: float
+          description: Координата X
+        y:
+          type: integer
+          format: int64
+          description: Координата Y
+
+    Address:
+      type: object
+      xml:
+        name: postalAddress
+      required:
+        - street
+      properties:
+        street:
+          type: string
+          maxLength: 158
+          description: Улица, не может быть null, длина не больше 158
+
+    OrganizationType:
+      type: string
+      description: Тип организации
+      enum:
+        - COMMERCIAL
+        - TRUST
+        - PRIVATE_LIMITED_COMPANY
+        - OPEN_JOINT_STOCK_COMPANY
+
+    OrganizationList:
+      type: object
+      xml:
+        name: organizations
+      required:
+        - total
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Общее количество организаций в выборке
+        items:
+          type: array
+          xml:
+            name: organization
+            wrapped: false
+          items:
+            $ref: '#/components/schemas/Organization'
+
+    Error:
+      type: object
+      xml:
+        name: error
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: HTTP-код ошибки
+        message:
+          type: string
+          description: Текстовое описание ошибки
