@@ -1,0 +1,816 @@
+openapi: 3.0.3
+
+info:
+  title: Organization Service
+  version: 1.0.0
+  description: |
+    Первый веб-сервис. Управление коллекцией объектов класса `Organization`.
+
+    Сервис реализует базовый набор REST-операций над элементами коллекции
+    (создание, получение по ИД, обновление, удаление, получение массива элементов),
+    а также дополнительные операции (группировка по `name`, подсчёт количества
+    объектов с `annualTurnover` меньше заданного, массив уникальных значений
+    `annualTurnover`), размещённые на отдельных URL.
+
+    Все данные передаются в формате XML (`application/xml`).
+    Данные, нарушающие ограничения целостности, приводят к ответу с кодом,
+    соответствующим ошибке (400/404).
+
+servers:
+  - url: https://{host}:{port}
+    description: Сервер helios, на котором развёрнут сервис
+    variables:
+      host:
+        default: helios.cs.ifmo.ru
+        description: Хост сервера
+      port:
+        default: "8080"
+        description: Порт сервиса
+
+security: []
+
+tags:
+  - name: Organizations
+    description: Базовые операции над объектами коллекции
+  - name: Employees
+    description: Управление сотрудниками, связанными с организацией (многие к одному)
+  - name: Statistics
+    description: Дополнительные операции агрегации и выборки
+
+paths:
+  /organizations:
+    get:
+      tags: [Organizations]
+      operationId: getOrganizations
+      summary: Получить массив элементов коллекции
+      description: |
+        Возвращает массив объектов `Organization` с поддержкой:
+
+        * **фильтрации** по любой комбинации полей класса — каждое поле задаётся
+          отдельным query-параметром, параметры объединяются логическим AND;
+          вложенные поля задаются через точку (`coordinates.x`, `postalAddress.street`);
+        * **сортировки** по любой комбинации полей — параметр `sortBy` можно
+          указывать несколько раз, порядок сортировки задаётся `sortOrder`;
+        * **постраничного вывода** — размер страницы (`size`) и порядковый номер
+          страницы (`page`).
+
+        Все параметры передаются в URL запроса.
+      parameters:
+        - $ref: '#/components/parameters/filterId'
+        - $ref: '#/components/parameters/filterName'
+        - $ref: '#/components/parameters/filterCoordinatesX'
+        - $ref: '#/components/parameters/filterCoordinatesY'
+        - $ref: '#/components/parameters/filterCreationDate'
+        - $ref: '#/components/parameters/filterAnnualTurnover'
+        - $ref: '#/components/parameters/filterFullName'
+        - $ref: '#/components/parameters/filterType'
+        - $ref: '#/components/parameters/filterStreet'
+        - $ref: '#/components/parameters/sortBy'
+        - $ref: '#/components/parameters/sortOrder'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+      responses:
+        '200':
+          description: Постраничный результат выборки
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/OrganizationList'
+              example: |
+                <?xml version="1.0" encoding="UTF-8"?>
+                <organizations>
+                  <total>2</total>
+                  <page>1</page>
+                  <size>10</size>
+                  <organization>
+                    <id>1</id>
+                    <name>Acme</name>
+                    <coordinates>
+                      <x>12.5</x>
+                      <y>34</y>
+                    </coordinates>
+                    <creationDate>2024-03-01</creationDate>
+                    <annualTurnover>1000000</annualTurnover>
+                    <fullName>Acme Corporation</fullName>
+                    <type>COMMERCIAL</type>
+                    <postalAddress>
+                      <street>Main street</street>
+                    </postalAddress>
+                  </organization>
+                </organizations>
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Organizations]
+      operationId: createOrganization
+      summary: Добавить новый элемент в коллекцию
+      description: |
+        Создаёт новый объект `Organization`. Поля `id` и `creationDate`
+        генерируются автоматически и не должны передаваться клиентом.
+        При нарушении ограничений целостности возвращается `400`.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/OrganizationInput'
+            example: |
+              <?xml version="1.0" encoding="UTF-8"?>
+              <organization>
+                <name>Acme</name>
+                <coordinates>
+                  <x>12.5</x>
+                  <y>34</y>
+                </coordinates>
+                <annualTurnover>1000000</annualTurnover>
+                <fullName>Acme Corporation</fullName>
+                <type>COMMERCIAL</type>
+                <postalAddress>
+                  <street>Main street</street>
+                </postalAddress>
+              </organization>
+      responses:
+        '201':
+          description: Объект создан
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /organizations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/pathId'
+    get:
+      tags: [Organizations]
+      operationId: getOrganizationById
+      summary: Получить элемент по ИД
+      description: Возвращает объект `Organization` с указанным идентификатором.
+      responses:
+        '200':
+          description: Найденный объект
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Organizations]
+      operationId: updateOrganization
+      summary: Обновить элемент
+      description: |
+        Полностью обновляет объект `Organization` с указанным идентификатором.
+        Поля `id` и `creationDate` не изменяются.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/OrganizationInput'
+      responses:
+        '200':
+          description: Обновлённый объект
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Organizations]
+      operationId: deleteOrganization
+      summary: Удалить элемент
+      description: Удаляет объект `Organization` с указанным идентификатором.
+      responses:
+        '204':
+          description: Объект удалён
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /organizations/{id}/employees:
+    parameters:
+      - $ref: '#/components/parameters/pathId'
+    get:
+      tags: [Employees]
+      operationId: getOrganizationEmployees
+      summary: Получить сотрудников организации
+      description: |
+        Возвращает список сотрудников (`Employee`), связанных с организацией
+        отношением «многие к одному».
+      responses:
+        '200':
+          description: Список сотрудников
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/EmployeeList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Employees]
+      operationId: addOrganizationEmployee
+      summary: Добавить сотрудника в организацию
+      description: |
+        Создаёт сотрудника и связывает его с организацией отношением
+        «многие к одному» (`organizationId` устанавливается из пути).
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/EmployeeInput'
+            example: |
+              <?xml version="1.0" encoding="UTF-8"?>
+              <employee>
+                <name>John Doe</name>
+                <position>Engineer</position>
+                <salary>75000</salary>
+              </employee>
+      responses:
+        '201':
+          description: Сотрудник создан
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /organizations/{id}/employees/{employeeId}:
+    parameters:
+      - $ref: '#/components/parameters/pathId'
+      - $ref: '#/components/parameters/pathEmployeeId'
+    delete:
+      tags: [Employees]
+      operationId: deleteOrganizationEmployee
+      summary: Удалить сотрудника организации
+      description: Удаляет сотрудника по его идентификатору из указанной организации.
+      responses:
+        '204':
+          description: Сотрудник удалён
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /organizations/stats/grouped-by-name:
+    get:
+      tags: [Statistics]
+      operationId: getOrganizationsGroupedByName
+      summary: Сгруппировать объекты по значению поля name
+      description: |
+        Группирует объекты коллекции по значению поля `name` и возвращает
+        количество элементов в каждой группе.
+      responses:
+        '200':
+          description: Группы и количество элементов в каждой
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/NameGroupList'
+              example: |
+                <?xml version="1.0" encoding="UTF-8"?>
+                <groups>
+                  <group>
+                    <name>Acme</name>
+                    <count>3</count>
+                  </group>
+                  <group>
+                    <name>Globex</name>
+                    <count>1</count>
+                  </group>
+                </groups>
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /organizations/stats/annual-turnover/less-than/{value}:
+    parameters:
+      - name: value
+        in: path
+        required: true
+        description: Пороговое значение поля annualTurnover
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+    get:
+      tags: [Statistics]
+      operationId: countAnnualTurnoverLessThan
+      summary: Количество объектов с annualTurnover меньше заданного
+      description: |
+        Возвращает количество объектов коллекции, значение поля `annualTurnover`
+        которых меньше заданного значения.
+      responses:
+        '200':
+          description: Количество объектов
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+              example: |
+                <?xml version="1.0" encoding="UTF-8"?>
+                <count>5</count>
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /organizations/stats/annual-turnover/unique:
+    get:
+      tags: [Statistics]
+      operationId: getUniqueAnnualTurnover
+      summary: Уникальные значения поля annualTurnover
+      description: Возвращает массив уникальных значений поля `annualTurnover` по всем объектам.
+      responses:
+        '200':
+          description: Массив уникальных значений
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/UniqueTurnoverList'
+              example: |
+                <?xml version="1.0" encoding="UTF-8"?>
+                <values>
+                  <value>1000000</value>
+                  <value>2500000</value>
+                </values>
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    pathId:
+      name: id
+      in: path
+      required: true
+      description: Идентификатор организации (больше 0)
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    pathEmployeeId:
+      name: employeeId
+      in: path
+      required: true
+      description: Идентификатор сотрудника (больше 0)
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    filterId:
+      name: id
+      in: query
+      required: false
+      description: Фильтр по полю id
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    filterName:
+      name: name
+      in: query
+      required: false
+      description: Фильтр по полю name
+      schema:
+        type: string
+    filterCoordinatesX:
+      name: coordinates.x
+      in: query
+      required: false
+      description: Фильтр по полю coordinates.x
+      schema:
+        type: number
+        format: float
+    filterCoordinatesY:
+      name: coordinates.y
+      in: query
+      required: false
+      description: Фильтр по полю coordinates.y
+      schema:
+        type: integer
+        format: int64
+    filterCreationDate:
+      name: creationDate
+      in: query
+      required: false
+      description: Фильтр по полю creationDate
+      schema:
+        type: string
+        format: date
+    filterAnnualTurnover:
+      name: annualTurnover
+      in: query
+      required: false
+      description: Фильтр по полю annualTurnover
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    filterFullName:
+      name: fullName
+      in: query
+      required: false
+      description: Фильтр по полю fullName
+      schema:
+        type: string
+    filterType:
+      name: type
+      in: query
+      required: false
+      description: Фильтр по полю type
+      schema:
+        $ref: '#/components/schemas/OrganizationType'
+    filterStreet:
+      name: postalAddress.street
+      in: query
+      required: false
+      description: Фильтр по полю postalAddress.street
+      schema:
+        type: string
+        maxLength: 158
+    sortBy:
+      name: sortBy
+      in: query
+      required: false
+      description: |
+        Поле для сортировки. Параметр можно указывать несколько раз для
+        сортировки по комбинации полей (в порядке перечисления). Допустимые
+        значения совпадают с набором полей класса, включая вложенные:
+        `id`, `name`, `coordinates.x`, `coordinates.y`, `creationDate`,
+        `annualTurnover`, `fullName`, `type`, `postalAddress.street`.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - id
+            - name
+            - coordinates.x
+            - coordinates.y
+            - creationDate
+            - annualTurnover
+            - fullName
+            - type
+            - postalAddress.street
+    sortOrder:
+      name: sortOrder
+      in: query
+      required: false
+      description: Порядок сортировки, применяемый к полям из sortBy
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+    page:
+      name: page
+      in: query
+      required: false
+      description: Порядковый номер выводимой страницы
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        default: 1
+    size:
+      name: size
+      in: query
+      required: false
+      description: Размер выводимой страницы
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 10
+
+  responses:
+    BadRequest:
+      description: Переданы данные, нарушающие ограничения целостности
+      content:
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example: |
+            <?xml version="1.0" encoding="UTF-8"?>
+            <error>
+              <code>400</code>
+              <message>Поле name не может быть пустым</message>
+            </error>
+    NotFound:
+      description: Объект с указанным ИД не найден
+      content:
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example: |
+            <?xml version="1.0" encoding="UTF-8"?>
+            <error>
+              <code>404</code>
+              <message>Организация не найдена</message>
+            </error>
+    InternalServerError:
+      description: Внутренняя ошибка сервиса
+      content:
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Organization:
+      type: object
+      xml:
+        name: organization
+      required:
+        - id
+        - name
+        - coordinates
+        - creationDate
+        - type
+        - postalAddress
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+          readOnly: true
+          description: Уникальный идентификатор, генерируется автоматически
+          xml:
+            attribute: true
+        name:
+          type: string
+          minLength: 1
+          description: Имя организации, не может быть null и пустым
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        creationDate:
+          type: string
+          format: date
+          readOnly: true
+          description: Дата создания, генерируется автоматически
+        annualTurnover:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Годовой оборот, может быть null, значение больше 0
+        fullName:
+          type: string
+          nullable: true
+          description: Полное наименование, может быть null
+        type:
+          $ref: '#/components/schemas/OrganizationType'
+        postalAddress:
+          $ref: '#/components/schemas/Address'
+
+    OrganizationInput:
+      type: object
+      xml:
+        name: organization
+      required:
+        - name
+        - coordinates
+        - type
+        - postalAddress
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Имя организации, не может быть null и пустым
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        annualTurnover:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Годовой оборот, может быть null, значение больше 0
+        fullName:
+          type: string
+          nullable: true
+          description: Полное наименование, может быть null
+        type:
+          $ref: '#/components/schemas/OrganizationType'
+        postalAddress:
+          $ref: '#/components/schemas/Address'
+
+    Coordinates:
+      type: object
+      xml:
+        name: coordinates
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: number
+          format: float
+          description: Координата X
+        y:
+          type: integer
+          format: int64
+          description: Координата Y
+
+    Address:
+      type: object
+      xml:
+        name: postalAddress
+      required:
+        - street
+      properties:
+        street:
+          type: string
+          maxLength: 158
+          description: Улица, не может быть null, длина не больше 158
+
+    OrganizationType:
+      type: string
+      description: Тип организации
+      enum:
+        - COMMERCIAL
+        - TRUST
+        - PRIVATE_LIMITED_COMPANY
+        - OPEN_JOINT_STOCK_COMPANY
+
+    Employee:
+      type: object
+      xml:
+        name: employee
+      required:
+        - id
+        - name
+        - organizationId
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+          readOnly: true
+          description: Уникальный идентификатор сотрудника
+          xml:
+            attribute: true
+        name:
+          type: string
+          minLength: 1
+          description: Имя сотрудника
+        position:
+          type: string
+          nullable: true
+          description: Должность
+        salary:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          description: Зарплата
+        organizationId:
+          type: integer
+          format: int32
+          minimum: 1
+          description: ИД организации (связь многие к одному)
+          xml:
+            attribute: true
+
+    EmployeeInput:
+      type: object
+      xml:
+        name: employee
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Имя сотрудника
+        position:
+          type: string
+          nullable: true
+          description: Должность
+        salary:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          description: Зарплата
+
+    OrganizationList:
+      type: object
+      xml:
+        name: organizations
+      required:
+        - total
+        - page
+        - size
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Общее количество элементов, удовлетворяющих условиям выборки
+        page:
+          type: integer
+          format: int32
+          description: Номер текущей страницы
+        size:
+          type: integer
+          format: int32
+          description: Размер страницы
+        items:
+          type: array
+          xml:
+            name: organization
+            wrapped: false
+          items:
+            $ref: '#/components/schemas/Organization'
+
+    EmployeeList:
+      type: object
+      xml:
+        name: employees
+      properties:
+        items:
+          type: array
+          xml:
+            name: employee
+            wrapped: false
+          items:
+            $ref: '#/components/schemas/Employee'
+
+    NameGroup:
+      type: object
+      xml:
+        name: group
+      required:
+        - name
+        - count
+      properties:
+        name:
+          type: string
+          description: Значение поля name
+        count:
+          type: integer
+          format: int64
+          description: Количество элементов в группе
+
+    NameGroupList:
+      type: object
+      xml:
+        name: groups
+      properties:
+        items:
+          type: array
+          xml:
+            name: group
+            wrapped: false
+          items:
+            $ref: '#/components/schemas/NameGroup'
+
+    CountResponse:
+      type: object
+      xml:
+        name: count
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+          format: int64
+          description: Количество объектов
+
+    UniqueTurnoverList:
+      type: object
+      xml:
+        name: values
+      properties:
+        items:
+          type: array
+          description: Уникальные значения annualTurnover
+          xml:
+            name: value
+            wrapped: false
+          items:
+            type: integer
+            format: int32
+            nullable: true
+
+    Error:
+      type: object
+      xml:
+        name: error
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: HTTP-код ошибки
+        message:
+          type: string
+          description: Текстовое описание ошибки
