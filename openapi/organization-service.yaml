@@ -537,17 +537,28 @@ components:
               <message>Поле name не может быть пустым</message>
             </error>
     EndpointNotFound:
-      description: Запрошенная ручка не найдена
+      description: Запрошенная ручка или объект не найдены
       content:
         application/xml:
           schema:
             $ref: '#/components/schemas/Error'
-          example: |
-            <?xml version="1.0" encoding="UTF-8"?>
-            <error>
-              <code>404</code>
-              <message>Запрошенная ручка не найдена</message>
-            </error>
+          examples:
+            endpointNotFound:
+              summary: Запрошенная ручка не найдена
+              value: |
+                <?xml version="1.0" encoding="UTF-8"?>
+                <error>
+                  <code>404</code>
+                  <message>Запрошенная ручка не найдена</message>
+                </error>
+            itemNotFound:
+              summary: Объект с указанным идентификатором не найден
+              value: |
+                <?xml version="1.0" encoding="UTF-8"?>
+                <error>
+                  <code>404</code>
+                  <message>Объект с указанным идентификатором не найден</message>
+                </error>
     InternalServerError:
       description: Внутренняя ошибка сервиса, не связанная с временной недоступностью БД
       content:
