@@ -91,6 +91,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/EndpointNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     post:
       tags: [Organizations]
       operationId: createOrganization
@@ -130,6 +134,10 @@ paths:
         '404':
           $ref: '#/components/responses/EndpointNotFound'
 
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /organizations/{id}:
     parameters:
       - $ref: '#/components/parameters/pathId'
@@ -147,6 +155,10 @@ paths:
                 $ref: '#/components/schemas/Organization'
         '404':
           $ref: '#/components/responses/EndpointNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     put:
       tags: [Organizations]
       operationId: updateOrganization
@@ -170,6 +182,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/EndpointNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     delete:
       tags: [Organizations]
       operationId: deleteOrganization
@@ -181,6 +197,10 @@ paths:
         '404':
           $ref: '#/components/responses/EndpointNotFound'
 
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /organizations/{id}/employees:
     parameters:
       - $ref: '#/components/parameters/pathId'
@@ -199,6 +219,10 @@ paths:
                 $ref: '#/components/schemas/EmployeeList'
         '404':
           $ref: '#/components/responses/EndpointNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     post:
       tags: [Employees]
       operationId: addOrganizationEmployee
@@ -230,6 +254,10 @@ paths:
         '404':
           $ref: '#/components/responses/EndpointNotFound'
 
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /organizations/{id}/employees/{employeeId}:
     parameters:
       - $ref: '#/components/parameters/pathId'
@@ -245,6 +273,10 @@ paths:
         '404':
           $ref: '#/components/responses/EndpointNotFound'
 
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /organizations/stats/grouped-by-name:
     get:
       tags: [Statistics]
@@ -278,6 +310,8 @@ paths:
         '404':
           $ref: '#/components/responses/EndpointNotFound'
 
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /organizations/stats/annual-turnover/less-than/{value}:
     parameters:
       - name: value
@@ -309,6 +343,10 @@ paths:
         '404':
           $ref: '#/components/responses/EndpointNotFound'
 
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /organizations/stats/annual-turnover/unique:
     get:
       tags: [Statistics]
@@ -335,6 +373,8 @@ paths:
         '404':
           $ref: '#/components/responses/EndpointNotFound'
 
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 components:
   parameters:
     pathId:
@@ -509,11 +549,29 @@ components:
               <message>Запрошенная ручка не найдена</message>
             </error>
     InternalServerError:
-      description: Внутренняя ошибка сервиса
+      description: Внутренняя ошибка сервиса, не связанная с временной недоступностью БД
       content:
         application/xml:
           schema:
             $ref: '#/components/schemas/Error'
+          example: |
+            <?xml version="1.0" encoding="UTF-8"?>
+            <error>
+              <code>500</code>
+              <message>Внутренняя ошибка сервиса</message>
+            </error>
+    ServiceUnavailable:
+      description: Сервис временно не может обработать запрос, например из-за недоступности БД
+      content:
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example: |
+            <?xml version="1.0" encoding="UTF-8"?>
+            <error>
+              <code>503</code>
+              <message>База данных временно недоступна</message>
+            </error>
 
   schemas:
     Organization:
