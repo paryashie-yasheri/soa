@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOST="${HOST:-helios}"
 REMOTE_DIR="${REMOTE_DIR:-/home/studs/s389491/public_html/soa}"
 LOCAL_DIR="$SCRIPT_DIR/swagger/dist"
-PUBLIC_URL="${PUBLIC_URL:-https://helios.cs.ifmo.ru/~s389491/soa/}"
+PUBLIC_URL="${PUBLIC_URL:-https://se.ifmo.ru}"
 
 echo "==> Building static documentation"
 "$SCRIPT_DIR/swagger/build.sh"
