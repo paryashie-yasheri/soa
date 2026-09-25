@@ -37,12 +37,14 @@ paths:
       operationId: filterByEmployeesCount
       summary: Отфильтровать организации по количеству сотрудников
       description: |
-        Возвращает организации, у которых число сотрудников попадает в заданный диапазон.
+        Возвращает организации, у которых число сотрудников находится в диапазоне
+        от `min-employees-count` до `max-employees-count` включительно. Если
+        минимум больше максимума, сервис возвращает `400 Bad Request`.
       parameters:
         - name: min-employees-count
           in: path
           required: true
-          description: Минимальное количество сотрудников (включительно)
+          description: Минимальное количество сотрудников (включительно); должно быть не больше максимума.
           schema:
             type: integer
             format: int32
@@ -50,7 +52,7 @@ paths:
         - name: max-employees-count
           in: path
           required: true
-          description: Максимальное количество сотрудников (включительно)
+          description: Максимальное количество сотрудников (включительно); должно быть не меньше минимума.
           schema:
             type: integer
             format: int32
@@ -121,7 +123,9 @@ paths:
       operationId: orderOrganizations
       summary: Вывести список организаций, отсортированных по заданному полю
       description: |
-        Сортирует организации по полю `param-name`. Направление задаёт `desc`.
+        Сортирует организации по полю `param-name`. `desc` принимает только
+        строку `true` (по убыванию) или `false` (по возрастанию). Любое иное
+        значение отклоняется с ответом `400 Bad Request`.
       parameters:
         - name: param-name
           in: path
@@ -142,7 +146,7 @@ paths:
         - name: desc
           in: path
           required: true
-          description: Направление сортировки; `true` — по убыванию, `false` — по возрастанию
+          description: Только `true` (по убыванию) или `false` (по возрастанию); любое другое значение приводит к 400 Bad Request.
           schema:
             type: string
             enum: ["true", "false"]
@@ -288,6 +292,7 @@ components:
 
     OrganizationList:
       type: object
+      description: Полный, непостраничный результат операций OrgDirectory; total равен числу возвращаемых организаций. Поля page и size отсутствуют, поскольку эти операции не принимают параметры пагинации.
       xml:
         name: organizations
       required:
@@ -296,7 +301,7 @@ components:
         total:
           type: integer
           format: int64
-          description: Общее количество организаций в выборке
+          description: Число организаций в полном возвращаемом (непостраничном) результате
         items:
           type: array
           xml:

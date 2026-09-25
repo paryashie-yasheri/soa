@@ -44,6 +44,10 @@ paths:
       summary: Получить массив элементов коллекции
       description: |
         Возвращает организации. Можно задать фильтры, сортировку и страницу.
+        Фильтры применяются до подсчёта `total` и пагинации; `total` — число
+        организаций после фильтрации, но до пагинации. Если `page` выходит
+        за пределы результата, возвращается пустой `items`, а `total` сохраняет
+        число найденных после фильтрации организаций.
       parameters:
         - $ref: '#/components/parameters/filterId'
         - $ref: '#/components/parameters/filterName'
@@ -358,7 +362,10 @@ paths:
       tags: [Statistics]
       operationId: getUniqueAnnualTurnover
       summary: Уникальные значения поля annualTurnover
-      description: Возвращает уникальные значения `annualTurnover`.
+      description: |
+        Возвращает уникальные значения `annualTurnover`, включая `null`, если
+        хотя бы у одной организации оборот не задан. В XML значение `null`
+        представляется элементом `<value xsi:nil="true"/>`.
       responses:
         '200':
           description: Массив уникальных значений
@@ -368,9 +375,10 @@ paths:
                 $ref: '#/components/schemas/UniqueTurnoverList'
               example: |
                 <?xml version="1.0" encoding="UTF-8"?>
-                <values>
+                <values xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
                   <value>1000000</value>
                   <value>2500000</value>
+                  <value xsi:nil="true"/>
                 </values>
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -511,7 +519,7 @@ components:
       name: page
       in: query
       required: false
-      description: Порядковый номер выводимой страницы
+      description: Номер страницы, начиная с 1. Страница за пределами результата возвращает пустой items.
       schema:
         type: integer
         format: int32
@@ -521,7 +529,7 @@ components:
       name: size
       in: query
       required: false
-      description: Размер выводимой страницы
+      description: Максимальное число элементов на странице; применяется после фильтрации и до возврата результата.
       schema:
         type: integer
         format: int32
@@ -791,15 +799,15 @@ components:
         total:
           type: integer
           format: int64
-          description: Общее количество элементов, удовлетворяющих условиям выборки
+          description: Число элементов после фильтрации и до пагинации
         page:
           type: integer
           format: int32
-          description: Номер текущей страницы
+          description: Номер текущей страницы, начиная с 1; страница за пределами результата содержит пустой items
         size:
           type: integer
           format: int32
-          description: Размер страницы
+          description: Запрошенный максимальный размер страницы
         items:
           type: array
           xml:
@@ -877,6 +885,7 @@ components:
             type: integer
             format: int32
             nullable: true
+            description: null кодируется XML-элементом value с xsi:nil="true"
 
     Error:
       type: object
