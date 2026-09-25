@@ -123,6 +123,8 @@ paths:
                 </postalAddress>
               </organization>
       responses:
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '201':
           description: Объект создан
           content:
@@ -172,6 +174,8 @@ paths:
             schema:
               $ref: '#/components/schemas/OrganizationInput'
       responses:
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '200':
           description: Обновлённый объект
           content:
@@ -243,6 +247,8 @@ paths:
                 <salary>75000</salary>
               </employee>
       responses:
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '201':
           description: Сотрудник создан
           content:
@@ -535,6 +541,18 @@ components:
             <error>
               <code>400</code>
               <message>Поле name не может быть пустым</message>
+            </error>
+    UnsupportedMediaType:
+      description: Тело запроса должно быть передано в формате application/xml
+      content:
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example: |
+            <?xml version="1.0" encoding="UTF-8"?>
+            <error>
+              <code>415</code>
+              <message>Ожидался формат application/xml</message>
             </error>
     EndpointNotFound:
       description: Запрошенная ручка или объект не найдены
