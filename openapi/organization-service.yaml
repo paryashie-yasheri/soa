@@ -18,7 +18,6 @@ info:
 
 servers:
   - url: https://{host}:{port}
-    description: Сервер helios, на котором развёрнут сервис
     variables:
       host:
         default: helios.cs.ifmo.ru
