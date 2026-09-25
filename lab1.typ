@@ -1,5 +1,5 @@
-#import "../report-template/report.typ": report
-#import "../report-template/title-page-template.typ": title-page
+#import "report-template/report.typ": report
+#import "report-template/title-page-template.typ": title-page
 
 #show: report
 
@@ -38,6 +38,8 @@
 
 Спецификация `openapi/organization-service.yaml` описывает ресурс `/organizations` и дочерние ресурсы. Основные операции используют HTTP-методы по назначению: `GET` для чтения, `POST` для создания, `PUT` для полного обновления и `DELETE` для удаления.
 
+Для обоих сервисов в качестве сервера задан `https://se.ifmo.ru`; порт по умолчанию — `443`.
+
 #table(
   columns: (1.15fr, 0.8fr, 2.2fr),
   align: (left, center, left),
@@ -64,7 +66,7 @@ GET /organizations?type=COMMERCIAL&coordinates.x=12.5&sortBy=name&sortOrder=asc&
 
 Дополнительные операции статистики имеют отдельные URL: `/organizations/stats/grouped-by-name` группирует организации по имени и возвращает число элементов в каждой группе; `/organizations/stats/annual-turnover/less-than/{value}` считает организации с оборотом меньше порога; `/organizations/stats/annual-turnover/unique` возвращает уникальные значения оборота.
 
-При некорректных данных предусмотрен ответ `400 Bad Request`, при отсутствии ресурса — `404 Not Found`. Для успешного создания указан код `201 Created`, а удаление выполняется с ответом `204 No Content`.
+При некорректных данных предусмотрен ответ `400 Bad Request`. Ответ `404 Not Found` описывает ситуацию, когда запрошенная ручка не найдена, и указан для всех операций обеих спецификаций. Для успешного создания указан код `201 Created`, а удаление выполняется с ответом `204 No Content`.
 
 == Сервис каталога организаций
 
@@ -87,7 +89,7 @@ GET /organizations?type=COMMERCIAL&coordinates.x=12.5&sortBy=name&sortOrder=asc&
 
 Для отображения обеих спецификаций создана конфигурация Swagger UI. Скрипт `swagger/build.sh` подготавливает статический сайт и копирует в него файлы спецификаций. В интерфейсе доступны отдельные представления `Organization Service` и `OrgDirectory Service`.
 
-Скрипт `deploy.sh` собирает документацию, передаёт статические файлы на `helios` в каталог `/home/studs/s389491/public_html/soa` и задаёт публичный адрес `https://helios.cs.ifmo.ru/~s389491/soa/`. Наличие скрипта описывает предусмотренный процесс публикации; фактическое выполнение развертывания в рамках подготовки этого отчёта не подтверждалось.
+Скрипт `deploy.sh` собирает документацию, передаёт статические файлы на `helios` в каталог `/home/studs/s389491/public_html/soa` и задаёт публичный адрес `https://se.ifmo.ru`. Наличие скрипта описывает предусмотренный процесс публикации; фактическое выполнение развертывания в рамках подготовки этого отчёта не подтверждалось.
 
 = Результат
 

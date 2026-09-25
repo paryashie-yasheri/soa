@@ -20,10 +20,10 @@ servers:
   - url: https://{host}:{port}
     variables:
       host:
-        default: helios.cs.ifmo.ru
+        default: se.ifmo.ru
         description: Хост сервера
       port:
-        default: "8080"
+        default: "443"
         description: Порт сервиса
 
 security: []
@@ -43,17 +43,7 @@ paths:
       operationId: getOrganizations
       summary: Получить массив элементов коллекции
       description: |
-        Возвращает массив объектов `Organization` с поддержкой:
-
-        * **фильтрации** по любой комбинации полей класса — каждое поле задаётся
-          отдельным query-параметром, параметры объединяются логическим AND;
-          вложенные поля задаются через точку (`coordinates.x`, `postalAddress.street`);
-        * **сортировки** по любой комбинации полей — параметр `sortBy` можно
-          указывать несколько раз, порядок сортировки задаётся `sortOrder`;
-        * **постраничного вывода** — размер страницы (`size`) и порядковый номер
-          страницы (`page`).
-
-        Все параметры передаются в URL запроса.
+        Возвращает организации. Можно задать фильтры, сортировку и страницу.
       parameters:
         - $ref: '#/components/parameters/filterId'
         - $ref: '#/components/parameters/filterName'
@@ -99,14 +89,14 @@ paths:
                 </organizations>
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/EndpointNotFound'
     post:
       tags: [Organizations]
       operationId: createOrganization
       summary: Добавить новый элемент в коллекцию
       description: |
-        Создаёт новый объект `Organization`. Поля `id` и `creationDate`
-        генерируются автоматически и не должны передаваться клиентом.
-        При нарушении ограничений целостности возвращается `400`.
+        Добавляет организацию. `id` и `creationDate` задаются автоматически.
       requestBody:
         required: true
         content:
@@ -137,6 +127,8 @@ paths:
                 $ref: '#/components/schemas/Organization'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/EndpointNotFound'
 
   /organizations/{id}:
     parameters:
@@ -145,7 +137,7 @@ paths:
       tags: [Organizations]
       operationId: getOrganizationById
       summary: Получить элемент по ИД
-      description: Возвращает объект `Organization` с указанным идентификатором.
+      description: Возвращает организацию с этим ID.
       responses:
         '200':
           description: Найденный объект
@@ -154,14 +146,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Organization'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/EndpointNotFound'
     put:
       tags: [Organizations]
       operationId: updateOrganization
       summary: Обновить элемент
       description: |
-        Полностью обновляет объект `Organization` с указанным идентификатором.
-        Поля `id` и `creationDate` не изменяются.
+        Обновляет организацию. `id` и `creationDate` остаются прежними.
       requestBody:
         required: true
         content:
@@ -178,17 +169,17 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/EndpointNotFound'
     delete:
       tags: [Organizations]
       operationId: deleteOrganization
       summary: Удалить элемент
-      description: Удаляет объект `Organization` с указанным идентификатором.
+      description: Удаляет организацию с этим ID.
       responses:
         '204':
           description: Объект удалён
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/EndpointNotFound'
 
   /organizations/{id}/employees:
     parameters:
@@ -198,8 +189,7 @@ paths:
       operationId: getOrganizationEmployees
       summary: Получить сотрудников организации
       description: |
-        Возвращает список сотрудников (`Employee`), связанных с организацией
-        отношением «многие к одному».
+        Возвращает сотрудников этой организации.
       responses:
         '200':
           description: Список сотрудников
@@ -208,14 +198,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmployeeList'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/EndpointNotFound'
     post:
       tags: [Employees]
       operationId: addOrganizationEmployee
       summary: Добавить сотрудника в организацию
       description: |
-        Создаёт сотрудника и связывает его с организацией отношением
-        «многие к одному» (`organizationId` устанавливается из пути).
+        Добавляет сотрудника в организацию из пути.
       requestBody:
         required: true
         content:
@@ -239,7 +228,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/EndpointNotFound'
 
   /organizations/{id}/employees/{employeeId}:
     parameters:
@@ -249,12 +238,12 @@ paths:
       tags: [Employees]
       operationId: deleteOrganizationEmployee
       summary: Удалить сотрудника организации
-      description: Удаляет сотрудника по его идентификатору из указанной организации.
+      description: Удаляет сотрудника из этой организации.
       responses:
         '204':
           description: Сотрудник удалён
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/EndpointNotFound'
 
   /organizations/stats/grouped-by-name:
     get:
@@ -262,8 +251,7 @@ paths:
       operationId: getOrganizationsGroupedByName
       summary: Сгруппировать объекты по значению поля name
       description: |
-        Группирует объекты коллекции по значению поля `name` и возвращает
-        количество элементов в каждой группе.
+        Считает организации с одинаковым `name`.
       responses:
         '200':
           description: Группы и количество элементов в каждой
@@ -287,6 +275,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalServerError'
+        '404':
+          $ref: '#/components/responses/EndpointNotFound'
 
   /organizations/stats/annual-turnover/less-than/{value}:
     parameters:
@@ -303,8 +293,7 @@ paths:
       operationId: countAnnualTurnoverLessThan
       summary: Количество объектов с annualTurnover меньше заданного
       description: |
-        Возвращает количество объектов коллекции, значение поля `annualTurnover`
-        которых меньше заданного значения.
+        Считает организации с `annualTurnover` меньше указанного значения.
       responses:
         '200':
           description: Количество объектов
@@ -317,13 +306,15 @@ paths:
                 <count>5</count>
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/EndpointNotFound'
 
   /organizations/stats/annual-turnover/unique:
     get:
       tags: [Statistics]
       operationId: getUniqueAnnualTurnover
       summary: Уникальные значения поля annualTurnover
-      description: Возвращает массив уникальных значений поля `annualTurnover` по всем объектам.
+      description: Возвращает уникальные значения `annualTurnover`.
       responses:
         '200':
           description: Массив уникальных значений
@@ -341,6 +332,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalServerError'
+        '404':
+          $ref: '#/components/responses/EndpointNotFound'
 
 components:
   parameters:
@@ -503,8 +496,8 @@ components:
               <code>400</code>
               <message>Поле name не может быть пустым</message>
             </error>
-    NotFound:
-      description: Объект с указанным ИД не найден
+    EndpointNotFound:
+      description: Запрошенная ручка не найдена
       content:
         application/xml:
           schema:
@@ -513,7 +506,7 @@ components:
             <?xml version="1.0" encoding="UTF-8"?>
             <error>
               <code>404</code>
-              <message>Организация не найдена</message>
+              <message>Запрошенная ручка не найдена</message>
             </error>
     InternalServerError:
       description: Внутренняя ошибка сервиса

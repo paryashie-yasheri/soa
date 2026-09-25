@@ -18,10 +18,10 @@ servers:
   - url: https://{host}:{port}/orgdirectory
     variables:
       host:
-        default: helios.cs.ifmo.ru
+        default: se.ifmo.ru
         description: Хост сервера
       port:
-        default: "8080"
+        default: "443"
         description: Порт сервиса
 
 security: []
@@ -37,10 +37,7 @@ paths:
       operationId: filterByEmployeesCount
       summary: Отфильтровать организации по количеству сотрудников
       description: |
-        Запрашивает у первого сервиса список организаций, подсчитывает количество
-        сотрудников (`Employee`, связь многие к одному) каждой организации и
-        возвращает организации, у которых количество сотрудников входит в
-        диапазон `[min-employees-count, max-employees-count]` включительно.
+        Возвращает организации, у которых число сотрудников попадает в заданный диапазон.
       parameters:
         - name: min-employees-count
           in: path
@@ -97,6 +94,8 @@ paths:
             application/xml:
               schema:
                 $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/EndpointNotFound'
 
   /order/{param-name}/{desc}:
     get:
@@ -104,8 +103,7 @@ paths:
       operationId: orderOrganizations
       summary: Вывести список организаций, отсортированных по заданному полю
       description: |
-        Запрашивает у первого сервиса список организаций и сортирует его по полю
-        `param-name` в порядке возрастания или убывания в зависимости от `desc`.
+        Сортирует организации по полю `param-name`. Направление задаёт `desc`.
       parameters:
         - name: param-name
           in: path
@@ -149,8 +147,24 @@ paths:
             application/xml:
               schema:
                 $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/EndpointNotFound'
 
 components:
+  responses:
+    EndpointNotFound:
+      description: Запрошенная ручка не найдена
+      content:
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example: |
+            <?xml version="1.0" encoding="UTF-8"?>
+            <error>
+              <code>404</code>
+              <message>Запрошенная ручка не найдена</message>
+            </error>
+
   schemas:
     Organization:
       type: object
