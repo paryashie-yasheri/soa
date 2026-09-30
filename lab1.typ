@@ -103,10 +103,4 @@ GET /organizations?type=COMMERCIAL&coordinates.x=12.5&sortBy=name&sortOrder=asc&
 #heading(level: 1, numbering: none)[#align(center)[Приложение А]]
 #align(center)[*Спецификация сервиса управления организациями*]
 
-Спецификация OpenAPI сервиса управления организациями размещена в репозитории проекта: #link("https://github.com/paryashie-yasheri/soa/blob/main/openapi/organization-service.yaml")[organization-service.yaml].
-
-#pagebreak()
-#heading(level: 1, numbering: none)[#align(center)[Приложение Б]]
-#align(center)[*Спецификация сервиса каталога организаций*]
-
-Спецификация OpenAPI сервиса каталога организаций размещена в репозитории проекта: #link("https://github.com/paryashie-yasheri/soa/blob/main/openapi/orgdirectory-service.yaml")[orgdirectory-service.yaml].
+Спецификация OpenAPI сервиса управления организациями размещена в репозитории проекта: https://github.com/paryashie-yasheri/soa/
