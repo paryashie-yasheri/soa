@@ -21,3 +21,14 @@ Thumbs.db
 # Logs and temp
 *.log
 *.tmp
+
+# Gradle and Quarkus outputs
+.gradle/
+**/build/
+.kotlin/
+
+# Generated TLS credentials and runtime state
+/tls/
+/.env
+/logs/
+/pids/
