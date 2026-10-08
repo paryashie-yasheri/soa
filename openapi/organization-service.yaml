@@ -16,14 +16,7 @@ info:
     соответствующий ошибке (400/404).
 
 servers:
-  - url: https://{host}:{port}
-    variables:
-      host:
-        default: se.ifmo.ru
-        description: Хост сервера
-      port:
-        default: "443"
-        description: Порт сервиса
+  - url: /
 
 security: []
 

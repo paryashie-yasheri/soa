@@ -1,17 +1,21 @@
 package ru.ifmo.soa.service
 
 import jakarta.enterprise.context.ApplicationScoped
+import jakarta.inject.Inject
 import ru.ifmo.soa.repository.OrganizationApiRepository
 import ru.ifmo.soa.repository.DirectoryTimeout
 
 class DirectoryFault(val status: Int, override val message: String) : RuntimeException(message)
 
 @ApplicationScoped
-class DirectoryService(private val repository: OrganizationApiRepository) {
+class DirectoryService {
     private val sortable = setOf(
         "id", "name", "coordinates.x", "coordinates.y", "creationDate",
         "annualTurnover", "fullName", "type", "postalAddress.street"
     )
+
+    @field:Inject
+    private lateinit var repository: OrganizationApiRepository
 
     fun filterByEmployeeCount(minimum: Int, maximum: Int): List<String> {
         if (minimum < 0 || maximum < minimum) {

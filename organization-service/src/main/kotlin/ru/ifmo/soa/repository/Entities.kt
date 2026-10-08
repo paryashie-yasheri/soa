@@ -19,8 +19,10 @@ class OrganizationEntity {
     @OneToMany(mappedBy = "organization", cascade = [CascadeType.REMOVE], orphanRemoval = true)
     var employees: MutableList<EmployeeEntity> = mutableListOf()
 
-    fun toModel() = Organization(id, name, Coordinates(coordinatesX, coordinatesY), creationDate,
-        annualTurnover, fullName, type, Address(street))
+    fun toModel() = Organization(
+        id, name, Coordinates(coordinatesX, coordinatesY),
+        creationDate, annualTurnover, fullName, type, Address(street)
+    )
 }
 
 @Entity

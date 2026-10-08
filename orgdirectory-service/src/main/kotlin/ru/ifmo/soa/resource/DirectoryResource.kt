@@ -1,14 +1,20 @@
 package ru.ifmo.soa.resource
 
+import jakarta.enterprise.context.ApplicationScoped
+import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import ru.ifmo.soa.service.DirectoryFault
 import ru.ifmo.soa.service.DirectoryService
 
-@Path("/orgdirectory")
+@ApplicationScoped
+@Path("/")
 @Produces(MediaType.APPLICATION_XML)
-class DirectoryResource(private val service: DirectoryService) {
+class DirectoryResource {
+    @field:Inject
+    private lateinit var service: DirectoryService
+
     @GET
     @Path("/filter/employees/{min-employees-count}/{max-employees-count}")
     fun filter(

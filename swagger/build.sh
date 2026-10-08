@@ -2,22 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SPEC_DIR="$ROOT_DIR/openapi"
 OUT_DIR="$SCRIPT_DIR/dist"
 VERSION="${SWAGGER_UI_VERSION:-5.33.0}"
 
 echo "==> Vendoring swagger-ui-dist@$VERSION"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
-npm install --silent --ignore-scripts --no-audit --no-fund --no-save --prefix "$TMP_DIR" "swagger-ui-dist@$VERSION"
+npm install --silent --prefer-offline --ignore-scripts --no-audit --no-fund --no-save --prefix "$TMP_DIR" "swagger-ui-dist@$VERSION"
 
 echo "==> Preparing $OUT_DIR"
 rm -rf "$OUT_DIR"
-mkdir -p "$OUT_DIR/specs"
+mkdir -p "$OUT_DIR"
 cp -R "$TMP_DIR/node_modules/swagger-ui-dist/." "$OUT_DIR/"
-cp "$SPEC_DIR/organization-service.yaml" "$OUT_DIR/specs/"
-cp "$SPEC_DIR/orgdirectory-service.yaml" "$OUT_DIR/specs/"
 
 echo "==> Writing index.html"
 cat > "$OUT_DIR/index.html" <<'HTML'
@@ -40,11 +36,11 @@ cat > "$OUT_DIR/index.html" <<'HTML'
         window.ui = SwaggerUIBundle({
           urls: [
             {
-              url: "./specs/organization-service.yaml",
+              url: "/openapi/organizations",
               name: "Organization Service",
             },
             {
-              url: "./specs/orgdirectory-service.yaml",
+              url: "/openapi/orgdirectory",
               name: "OrgDirectory Service",
             },
           ],
@@ -56,6 +52,8 @@ cat > "$OUT_DIR/index.html" <<'HTML'
           ],
           layout: "StandaloneLayout",
           deepLinking: true,
+          validatorUrl: null,
+          displayRequestDuration: true,
         });
       };
     </script>

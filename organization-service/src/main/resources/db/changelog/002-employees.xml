@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="002-create-employees" author="soa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="s389491" tableName="employees"/>
+            </not>
+        </preConditions>
+        <createTable schemaName="s389491" tableName="employees">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="employees_pkey" nullable="false"/>
+            </column>
+            <column name="organization_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="job_position" type="varchar(255)"/>
+            <column name="salary" type="double"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableSchemaName="s389491" baseTableName="employees" baseColumnNames="organization_id"
+                                 referencedTableSchemaName="s389491" referencedTableName="organizations" referencedColumnNames="id"
+                                 constraintName="employees_organization_fk" onDelete="CASCADE"/>
+    </changeSet>
+</databaseChangeLog>

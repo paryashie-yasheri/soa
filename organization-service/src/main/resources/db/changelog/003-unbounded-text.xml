@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <!-- These API fields have no maximum length. Also upgrade existing Quarkus tables. -->
+    <changeSet id="003-unbounded-text" author="soa">
+        <modifyDataType schemaName="s389491" tableName="organizations" columnName="name" newDataType="text"/>
+        <modifyDataType schemaName="s389491" tableName="organizations" columnName="full_name" newDataType="text"/>
+        <modifyDataType schemaName="s389491" tableName="employees" columnName="name" newDataType="text"/>
+        <modifyDataType schemaName="s389491" tableName="employees" columnName="job_position" newDataType="text"/>
+    </changeSet>
+</databaseChangeLog>

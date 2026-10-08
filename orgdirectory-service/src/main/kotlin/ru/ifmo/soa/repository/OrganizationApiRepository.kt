@@ -1,7 +1,6 @@
 package ru.ifmo.soa.repository
 
 import jakarta.enterprise.context.ApplicationScoped
-import org.eclipse.microprofile.config.inject.ConfigProperty
 import org.w3c.dom.Element
 import java.io.StringReader
 import java.io.StringWriter
@@ -21,8 +20,9 @@ data class OrganizationDocument(val id: Int, val xml: String)
 
 @ApplicationScoped
 class OrganizationApiRepository {
-    @ConfigProperty(name = "organization-service.url", defaultValue = "https://localhost:9443")
-    lateinit var base: String
+    private val base: String = System.getProperty("organization-service.url")
+        ?: System.getenv("ORGANIZATION_SERVICE_URL")
+        ?: "https://localhost:61811"
 
     private val client: HttpClient by lazy {
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(4)).build()
@@ -86,8 +86,7 @@ class OrganizationApiRepository {
         children(this).firstOrNull { it.tagName == name }
 
     private fun serialize(element: Element): String = StringWriter().also { writer ->
-        TransformerFactory.newInstance()
-            .newTransformer()
+        TransformerFactory.newInstance().newTransformer()
             .apply { setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes") }
             .transform(DOMSource(element), StreamResult(writer))
     }.toString()

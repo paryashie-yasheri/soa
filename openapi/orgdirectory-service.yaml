@@ -14,14 +14,7 @@ info:
     в формате XML (`application/xml`).
 
 servers:
-  - url: https://{host}:{port}/orgdirectory
-    variables:
-      host:
-        default: se.ifmo.ru
-        description: Хост сервера
-      port:
-        default: "443"
-        description: Порт сервиса
+  - url: /orgdirectory
 
 security: []
 

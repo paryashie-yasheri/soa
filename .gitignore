@@ -22,13 +22,16 @@ Thumbs.db
 *.log
 *.tmp
 
-# Gradle and Quarkus outputs
+# Gradle outputs
 .gradle/
 **/build/
 .kotlin/
 
+# Staged JDBC driver for the WildFly module (regenerate with ./gradlew copyPostgresDriver)
+/wildfly/postgresql-module/*.jar
+
 # Generated TLS credentials and runtime state
 /tls/
-/.env
+**/.env
 /logs/
 /pids/

@@ -1,14 +1,19 @@
 package ru.ifmo.soa.repository
 
-import io.quarkus.hibernate.orm.panache.kotlin.PanacheRepositoryBase
 import jakarta.enterprise.context.ApplicationScoped
+import jakarta.persistence.EntityManager
+import jakarta.persistence.PersistenceContext
 import ru.ifmo.soa.model.Employee
 import ru.ifmo.soa.model.EmployeeInput
 
 @ApplicationScoped
-class EmployeeRepository : PanacheRepositoryBase<EmployeeEntity, Int> {
+class EmployeeRepository {
+    @field:PersistenceContext
+    private lateinit var entityManager: EntityManager
+
     fun byOrganization(organizationId: Int): List<Employee> =
-        find("organization.id = ?1 order by id", organizationId).list().map(EmployeeEntity::toModel)
+        entityManager.createQuery("select e from EmployeeEntity e where e.organization.id = :org order by e.id", EmployeeEntity::class.java)
+            .setParameter("org", organizationId).resultList.map { it.toModel() }
 
     fun add(organization: OrganizationEntity, input: EmployeeInput): Employee {
         val entity = EmployeeEntity().apply {
@@ -17,15 +22,17 @@ class EmployeeRepository : PanacheRepositoryBase<EmployeeEntity, Int> {
             position = input.position
             salary = input.salary
         }
-        persist(entity)
-        flush()
+        entityManager.persist(entity)
+        entityManager.flush()
         return entity.toModel()
     }
 
     fun remove(organizationId: Int, employeeId: Int): Boolean {
-        val employee = find("id = ?1 and organization.id = ?2", employeeId, organizationId).firstResult()
-            ?: return false
-        delete(employee)
+        val employee = entityManager.createQuery(
+            "select e from EmployeeEntity e where e.id = :id and e.organization.id = :org", EmployeeEntity::class.java)
+            .setParameter("id", employeeId).setParameter("org", organizationId)
+            .resultList.firstOrNull() ?: return false
+        entityManager.remove(employee)
         return true
     }
 }

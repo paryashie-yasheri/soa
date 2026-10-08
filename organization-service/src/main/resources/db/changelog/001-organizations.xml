@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="001-create-organizations" author="soa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="s389491" tableName="organizations"/>
+            </not>
+        </preConditions>
+        <createTable schemaName="s389491" tableName="organizations">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="organizations_pkey" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="coordinates_x" type="real">
+                <constraints nullable="false"/>
+            </column>
+            <column name="coordinates_y" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creation_date" type="date">
+                <constraints nullable="false"/>
+            </column>
+            <column name="annual_turnover" type="int"/>
+            <column name="full_name" type="varchar(255)"/>
+            <column name="organization_type" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="postal_address_street" type="varchar(158)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

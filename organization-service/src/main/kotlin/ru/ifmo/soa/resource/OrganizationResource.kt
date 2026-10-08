@@ -1,5 +1,7 @@
 package ru.ifmo.soa.resource
 
+import jakarta.enterprise.context.ApplicationScoped
+import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.MediaType
@@ -7,13 +9,16 @@ import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.core.UriInfo
 import ru.ifmo.soa.model.*
 import ru.ifmo.soa.service.OrganizationService
-import ru.ifmo.soa.service.ServiceFault
 import java.time.LocalDate
 
+@ApplicationScoped
 @Path("/organizations")
 @Produces(MediaType.APPLICATION_XML)
 @Consumes(MediaType.APPLICATION_XML)
-class OrganizationResource(private val service: OrganizationService) {
+class OrganizationResource {
+    @field:Inject
+    private lateinit var service: OrganizationService
+
     @GET
     fun list(@Context uri: UriInfo): Response = api {
         val q = uri.queryParameters
@@ -53,9 +58,8 @@ class OrganizationResource(private val service: OrganizationService) {
 
     @GET
     @Path("/{id}")
-    fun get(@PathParam("id") id: Int): Response = api {
-        Response.ok(XmlCodec.organization(service.get(id))).build()
-    }
+    fun get(@PathParam("id") id: Int): Response =
+        api { Response.ok(XmlCodec.organization(service.get(id))).build() }
 
     @PUT
     @Path("/{id}")
@@ -73,27 +77,20 @@ class OrganizationResource(private val service: OrganizationService) {
 
     @GET
     @Path("/stats/grouped-by-name")
-    fun grouped(): Response = api {
-        Response.ok(XmlCodec.groups(service.groupedByName())).build()
-    }
+    fun grouped(): Response =
+        api { Response.ok(XmlCodec.groups(service.groupedByName())).build() }
 
     @GET
     @Path("/stats/annual-turnover/less-than/{value}")
-    fun less(@PathParam("value") value: Int): Response = api {
-        Response.ok(XmlCodec.count(service.countTurnoverBelow(value))).build()
-    }
+    fun less(@PathParam("value") value: Int): Response =
+        api { Response.ok(XmlCodec.count(service.countTurnoverBelow(value))).build() }
 
     @GET
     @Path("/stats/annual-turnover/unique")
-    fun unique(): Response = api {
-        Response.ok(XmlCodec.uniqueTurnovers(service.uniqueTurnovers())).build()
-    }
+    fun unique(): Response =
+        api { Response.ok(XmlCodec.uniqueTurnovers(service.uniqueTurnovers())).build() }
 }
 
-private inline fun api(block: () -> Response): Response = try {
-    block()
-} catch (e: ServiceFault) {
-    errorResponse(e.status, e.message)
-} catch (e: Exception) {
-    apiErrorResponse(e)
+private inline fun api(block: () -> Response): Response = try { block() } catch (e: Exception) {
+    organizationError(e)
 }
