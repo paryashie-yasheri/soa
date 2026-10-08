@@ -72,11 +72,10 @@ paths:
               example: |
                 <?xml version="1.0" encoding="UTF-8"?>
                 <organizations>
-                  <total>2</total>
+                  <total>1</total>
                   <page>1</page>
                   <size>10</size>
-                  <organization>
-                    <id>1</id>
+                  <organization id="1">
                     <name>Acme</name>
                     <coordinates>
                       <x>12.5</x>
