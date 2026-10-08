@@ -4,17 +4,16 @@ info:
   title: Organization Service
   version: 1.0.0
   description: |
-    Первый веб-сервис. Управление коллекцией объектов класса `Organization`.
+    Первый веб-сервис управляет коллекцией объектов класса `Organization`.
 
-    Сервис реализует базовый набор REST-операций над элементами коллекции
-    (создание, получение по ИД, обновление, удаление, получение массива элементов),
-    а также дополнительные операции (группировка по `name`, подсчёт количества
-    объектов с `annualTurnover` меньше заданного, массив уникальных значений
-    `annualTurnover`), размещённые на отдельных URL.
+    Через REST API можно создать организацию, получить её по ИД, обновить,
+    удалить или запросить массив элементов коллекции. На отдельных URL доступны
+    группировка по `name`, подсчёт объектов с `annualTurnover` меньше заданного
+    и получение массива уникальных значений `annualTurnover`.
 
     Все данные передаются в формате XML (`application/xml`).
-    Данные, нарушающие ограничения целостности, приводят к ответу с кодом,
-    соответствующим ошибке (400/404).
+    При нарушении ограничений целостности сервис возвращает код,
+    соответствующий ошибке (400/404).
 
 servers:
   - url: https://{host}:{port}
@@ -44,10 +43,10 @@ paths:
       summary: Получить массив элементов коллекции
       description: |
         Возвращает организации. Можно задать фильтры, сортировку и страницу.
-        Фильтры применяются до подсчёта `total` и пагинации; `total` — число
-        организаций после фильтрации, но до пагинации. Если `page` выходит
-        за пределы результата, возвращается пустой `items`, а `total` сохраняет
-        число найденных после фильтрации организаций.
+        Сервис сначала применяет фильтры, затем подсчитывает `total` и выбирает
+        страницу. `total` содержит число всех организаций после фильтрации.
+        Если `page` выходит за пределы результата, сервис возвращает пустой
+        `items` с тем же значением `total`.
       parameters:
         - $ref: '#/components/parameters/filterId'
         - $ref: '#/components/parameters/filterName'
@@ -150,7 +149,7 @@ paths:
       tags: [Organizations]
       operationId: getOrganizationById
       summary: Получить элемент по ИД
-      description: Возвращает организацию с этим ID.
+      description: Возвращает организацию с указанным ID.
       responses:
         '200':
           description: Найденный объект
@@ -197,7 +196,7 @@ paths:
       tags: [Organizations]
       operationId: deleteOrganization
       summary: Удалить элемент
-      description: Удаляет организацию с этим ID.
+      description: Удаляет организацию с указанным ID.
       responses:
         '204':
           description: Объект удалён
@@ -235,7 +234,7 @@ paths:
       operationId: addOrganizationEmployee
       summary: Добавить сотрудника в организацию
       description: |
-        Добавляет сотрудника в организацию из пути.
+        Добавляет сотрудника в организацию, указанную в пути запроса.
       requestBody:
         required: true
         content:
@@ -484,9 +483,8 @@ components:
       in: query
       required: false
       description: |
-        Поле для сортировки. Параметр можно указывать несколько раз для
-        сортировки по комбинации полей (в порядке перечисления). Допустимые
-        значения совпадают с набором полей класса, включая вложенные:
+        Поле сортировки. Чтобы сортировать по нескольким полям, повторите
+        параметр в нужном порядке. Допустимы все поля класса, включая вложенные:
         `id`, `name`, `coordinates.x`, `coordinates.y`, `creationDate`,
         `annualTurnover`, `fullName`, `type`, `postalAddress.street`.
       style: form
@@ -528,7 +526,7 @@ components:
       name: size
       in: query
       required: false
-      description: Максимальное число элементов на странице; применяется после фильтрации и до возврата результата.
+      description: Максимальное число элементов на странице. Сервис выбирает страницу после фильтрации, перед возвратом результата.
       schema:
         type: integer
         format: int32
@@ -562,14 +560,14 @@ components:
               <message>Ожидался формат application/xml</message>
             </error>
     EndpointNotFound:
-      description: Запрошенная ручка или объект не найдены
+      description: Запрошенный путь или объект не найдены
       content:
         application/xml:
           schema:
             $ref: '#/components/schemas/Error'
           examples:
             endpointNotFound:
-              summary: Запрошенная ручка не найдена
+              summary: Запрошенный путь не найден
               value: |
                 <?xml version="1.0" encoding="UTF-8"?>
                 <error>
@@ -633,7 +631,7 @@ components:
         name:
           type: string
           minLength: 1
-          description: Имя организации, не может быть null и пустым
+          description: Имя организации. Не допускает null или пустую строку.
         coordinates:
           $ref: '#/components/schemas/Coordinates'
         creationDate:
@@ -646,11 +644,11 @@ components:
           format: int32
           minimum: 1
           nullable: true
-          description: Годовой оборот, может быть null, значение больше 0
+          description: Годовой оборот. Может быть null; если задан, должен быть больше 0.
         fullName:
           type: string
           nullable: true
-          description: Полное наименование, может быть null
+          description: Полное наименование. Может быть null.
         type:
           $ref: '#/components/schemas/OrganizationType'
         postalAddress:
@@ -669,7 +667,7 @@ components:
         name:
           type: string
           minLength: 1
-          description: Имя организации, не может быть null и пустым
+          description: Имя организации. Не допускает null или пустую строку.
         coordinates:
           $ref: '#/components/schemas/Coordinates'
         annualTurnover:
@@ -677,11 +675,11 @@ components:
           format: int32
           minimum: 1
           nullable: true
-          description: Годовой оборот, может быть null, значение больше 0
+          description: Годовой оборот. Может быть null; если задан, должен быть больше 0.
         fullName:
           type: string
           nullable: true
-          description: Полное наименование, может быть null
+          description: Полное наименование. Может быть null.
         type:
           $ref: '#/components/schemas/OrganizationType'
         postalAddress:
@@ -714,7 +712,7 @@ components:
         street:
           type: string
           maxLength: 158
-          description: Улица, не может быть null, длина не больше 158
+          description: Улица. Не допускает null; длина не больше 158 символов.
 
     OrganizationType:
       type: string
@@ -900,4 +898,4 @@ components:
           description: HTTP-код ошибки
         message:
           type: string
-          description: Текстовое описание ошибки
+          description: Сообщение об ошибке

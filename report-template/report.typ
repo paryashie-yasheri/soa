@@ -1,10 +1,8 @@
-// ══════════════════════════════════════════════════════════════════════════════
-// report.typ — Typst-эквивалент LaTeX-преамбулы
+// report.typ: оформление отчёта в Typst по LaTeX-преамбуле
 //
 // Воспроизводит стиль документа LaTeX (article + набор пакетов):
 //
 //   LaTeX                                     Typst
-//   ───────────────────────────────────────   ─────────────────────────────────
 //   \documentclass[a4paper,12pt]{article}      set page(paper: "a4"), set text(size: 12pt)
 //   [T2A]{fontenc} + inputenc + babel{ru,en}   set text(lang: "ru", font: <Times>)
 //   geometry(l=2, r=2, t=1, b=0.5 cm)          set page(margin: (...))
@@ -29,9 +27,8 @@
 //   // … либо #show: report.with(style: "latex")
 //
 // Доступные стили:
-//   "gost"  — ГОСТ 7.32-2017 (по умолчанию);
-//   "latex" — точное повторение LaTeX-преамбулы.
-// ══════════════════════════════════════════════════════════════════════════════
+//   "gost": ГОСТ 7.32-2017 (по умолчанию);
+//   "latex": точное повторение LaTeX-преамбулы.
 
 // Times-подобные шрифты (замена tempora/stix из LaTeX)
 #let times-fonts = ("Liberation Serif", "Libertinus Serif", "Noto Serif")
@@ -74,7 +71,7 @@
   let font = if font == none { p.font } else { font }
   let size = if size == none { p.size } else { size }
 
-  // ── geometry + \pagestyle{empty} ───────────────────────────────────────────
+  // geometry + \pagestyle{empty}
   set page(
     paper: "a4",
     margin: p.margin,
@@ -82,7 +79,7 @@
     number-align: center,
   )
 
-  // ── babel(russian,english) + шрифт (tempora/stix → Times) ──────────────────
+  // babel(russian,english) + шрифт (tempora/stix: Times)
   set text(font: font, size: size, lang: "ru", region: "RU")
   set par(
     justify: true,                                     // выключка по ширине
@@ -91,7 +88,7 @@
     first-line-indent: (amount: p.indent, all: true),  // indentfirst
   )
 
-  // ── titlesec: заголовки по article.cls + raggedright ───────────────────────
+  // titlesec: заголовки по article.cls + raggedright
   // Отступы заданы в pt (Typst не поддерживает ex); 1ex ≈ 0.45em для Times,
   // при 12pt это 5.4pt: \section 3.5ex/2.3ex, \subsection 3.25ex/1.5ex.
   let k = size / 12pt
@@ -104,7 +101,7 @@
   show heading.where(level: 2): set block(above: 17.6pt * k, below: 8.1pt * k)
   show heading.where(level: 3): set block(above: 17.6pt * k, below: 8.1pt * k)
 
-  // ── hyperref: linkcolor=black, urlcolor=blue; \ref → только номер ─────────
+  // hyperref: linkcolor=black, urlcolor=blue; \ref: только номер
   show link: it => if type(it.dest) == str {
     text(fill: rgb("#0000ff"), it.body)
   } else {
@@ -112,17 +109,17 @@
   }
   show ref: set ref(supplement: none)
 
-  // ── itemize/enumerate (article.cls) ────────────────────────────────────────
+  // itemize/enumerate (article.cls)
   set list(marker: ([•], [–], [∗]))
   set enum(numbering: "1.")
 
-  // ── booktabs: линейки задаются явно через table.hline ──────────────────────
+  // booktabs: линейки задаются явно через table.hline
   set table(stroke: none, inset: (x: 6pt, y: 4pt))
 
-  // ── minted: моноширинный код ───────────────────────────────────────────────
+  // minted: моноширинный код
   show raw: set text(font: mono-fonts, size: 0.9em)
 
-  // ── \tableofcontents ───────────────────────────────────────────────────────
+  // \tableofcontents
   set outline(depth: 3)
 
   body
