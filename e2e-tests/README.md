@@ -39,4 +39,4 @@ source contracts, preventing raw XML handler signatures from changing object sch
 into strings. `scripts/swagger_examples.cjs` checks the actual Swagger UI editors for
 organization create/update and employee create using Playwright with Chromium. It is
 read-only: it opens “Try it out” but never clicks “Execute”. Set `SOA_SWAGGER_URL` to
-target a local UI; the default uses the Helios SSH tunnel at `https://localhost:61811/ui/`.
+target a local UI; the default uses the Helios SSH tunnel at `https://localhost:61811/ui/docs/`.

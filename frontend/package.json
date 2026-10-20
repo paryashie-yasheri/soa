@@ -1,0 +1,38 @@
+{
+  "name": "soa-openapi-console",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run codegen && bun run assets && vite --host 0.0.0.0",
+    "codegen": "openapi-typescript ../openapi/organization-service.yaml -o src/generated/organization.ts && openapi-typescript ../openapi/orgdirectory-service.yaml -o src/generated/directory.ts",
+    "assets": "bun scripts/prepare-assets.mjs",
+    "build": "bun run codegen && bun run assets && tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir .prerender --emptyOutDir && bun scripts/prerender.mjs",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@fontsource/overpass-mono": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@tanstack/react-query": "^5.90.2",
+    "@tanstack/react-table": "^8.21.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.545.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
+    "openapi-typescript": "^7.10.1",
+    "swagger-ui-dist": "5.33.0",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.9"
+  }
+}

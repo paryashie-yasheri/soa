@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Organization API — Swagger UI</title>
+    <link rel="stylesheet" href="./swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="./swagger-ui-bundle.js"></script>
+    <script src="./swagger-ui-standalone-preset.js"></script>
+    <script>
+      window.onload = function () {
+        window.ui = SwaggerUIBundle({
+          urls: [
+            { url: '../openapi/organization-service.yaml', name: 'Organization Service' },
+            { url: '../openapi/orgdirectory-service.yaml', name: 'OrgDirectory Service' },
+          ],
+          'urls.primaryName': 'Organization Service',
+          dom_id: '#swagger-ui',
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+          layout: 'StandaloneLayout',
+          deepLinking: true,
+          validatorUrl: null,
+          displayRequestDuration: true,
+        })
+      }
+    </script>
+  </body>
+</html>

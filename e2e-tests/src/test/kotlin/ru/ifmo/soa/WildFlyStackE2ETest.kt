@@ -22,7 +22,7 @@ import org.xml.sax.InputSource
 
 /**
  * Exercises the WildFly deployment produced by `wildfly/Dockerfile`: both JAX-RS applications
- * behind a single TLS listener on port 61811, Swagger UI served at /ui, and the
+ * behind a single TLS listener on port 61811, React client at /ui and Swagger UI at /ui/docs, and the
  * shared PostgreSQL schema migrated by Liquibase.
  *
  * The stack itself is started and stopped by the `stackUp`/`stackDown` Gradle tasks that wrap
@@ -33,7 +33,7 @@ class WildFlyStackE2ETest {
     private val httpsPort = System.getenv("SOA_TEST_HTTPS_PORT") ?: "62811"
     private val api = "https://localhost:$httpsPort"
     private val directory = "$api/orgdirectory"
-    private val swagger = "$api/ui"
+    private val swagger = "$api/ui/docs"
     private val jdbcUrl = "jdbc:postgresql://localhost:15432/soa"
     private val dbUser = "soa"
     private val dbPassword = "soa-local"

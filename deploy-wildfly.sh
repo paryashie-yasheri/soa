@@ -3,7 +3,7 @@
 #   * the two JAX-RS applications as ROOT.war and orgdirectory.war
 #   * WildFly itself (downloaded on the host if missing) with an HTTPS-only listener
 #   * a PostgreSQL data source configured by soa-lab2/.env
-#   * Swagger UI with both API specifications at /ui/ as ui.war
+#   * the static React client at /ui/ and Swagger UI at /ui/docs/ as ui.war
 #
 # Run it from the repository root; it uses ssh/scp to reach the host.
 set -euo pipefail
@@ -19,12 +19,19 @@ SCHEMA="${SCHEMA:-s389491}"
 PUBLIC_HOST="${PUBLIC_HOST:-se.ifmo.ru}"
 POSTGRES_DRIVER_JAR="$ROOT/wildfly/postgresql-module/postgresql-42.7.5.jar"
 
+command -v bun >/dev/null 2>&1 || { echo 'Bun is required to build the frontend; install it before deploying' >&2; exit 1; }
 JAVA_MAJOR="$(java -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p')"
 [[ -n "$JAVA_MAJOR" && "$JAVA_MAJOR" -ge 17 ]] || { echo 'Java 17 or newer is required to build the WARs' >&2; exit 1; }
 
-echo "==> Building the WARs and staging the PostgreSQL driver"
-"$ROOT/gradlew" -p "$ROOT" --no-daemon clean :organization-service:war :orgdirectory-service:war uiWar copyPostgresDriver
+echo "==> Building the service WARs and staging the PostgreSQL driver"
+"$ROOT/gradlew" -p "$ROOT" --no-daemon clean :organization-service:war :orgdirectory-service:war copyPostgresDriver
 [[ -f "$POSTGRES_DRIVER_JAR" ]] || { echo "Missing PostgreSQL driver: $POSTGRES_DRIVER_JAR" >&2; exit 1; }
+
+echo "==> Installing locked frontend dependencies, generating OpenAPI types, and building the static frontend"
+# uiWar runs Bun install/build and packages the prerendered Vite output, fonts, and docs.
+# Rebuild on every deployment so changes to build-time configuration are included.
+"$ROOT/gradlew" -p "$ROOT" --no-daemon uiWar --rerun-tasks
+[[ -s "$ROOT/build/libs/ui.war" ]] || { echo 'Missing or empty frontend WAR' >&2; exit 1; }
 
 echo "==> Preparing the self-signed certificate"
 mkdir -p "$ROOT/tls"
@@ -60,7 +67,8 @@ ssh "$HOST" "chmod +x '$REMOTE_DIR/configure-wildfly.sh' '$REMOTE_DIR/setup-wild
 cat <<SUMMARY
 
 Deployed.
-  Swagger UI:    https://$PUBLIC_HOST:$SOA_HTTPS_PORT/ui/
+  Frontend:      https://$PUBLIC_HOST:$SOA_HTTPS_PORT/ui/
+  Swagger UI:    https://$PUBLIC_HOST:$SOA_HTTPS_PORT/ui/docs/
   Organization: https://$PUBLIC_HOST:$SOA_HTTPS_PORT/organizations
   Directory:    https://$PUBLIC_HOST:$SOA_HTTPS_PORT/orgdirectory/order/name/false
 

@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ ignoreHTTPSErrors: true });
-    await page.goto(process.env.SOA_SWAGGER_URL || 'https://localhost:61811/ui/');
+    await page.goto(process.env.SOA_SWAGGER_URL || 'https://localhost:61811/ui/docs/');
     for (const [id, root, fields] of [
       ['operations-Organizations-createOrganization', 'organization', ['name', 'coordinates', 'type', 'postalAddress']],
       ['operations-Organizations-updateOrganization', 'organization', ['name', 'coordinates', 'type', 'postalAddress']],

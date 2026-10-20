@@ -108,15 +108,45 @@ public enum OrganizationType {
 
 `./deploy-wildfly.sh` builds and deploys both JAX-RS WARs to Helios. All runtime
 files, scripts, TLS material, logs and configuration live in `~/soa-lab2`.
-Swagger UI is packaged in `ui.war`; deployment does not write to `public_html`.
-The dropdown selects Organization Service or OrgDirectory Service. WildFly serves both OpenAPI documents at `/openapi/organizations` and
-`/openapi/orgdirectory`. The SmallRye OpenAPI subsystem serves the explicit XML contracts packaged in each
-service WAR. Annotation scanning is disabled because the handlers accept raw XML
-strings, which otherwise overwrite object schemas with `type: string`.
-Both specifications use relative server URLs, so “Try it out” uses the current host and port, including
-SSH tunnels. `./gradlew uiWar` builds Swagger UI, which fetches the live documents. The old custom frontend is removed.
+The React 19 frontend is built with Bun, Vite, shadcn UI components, and
+TanStack Query/Table, then rendered into static HTML and packaged with its assets in `ui.war`.
+React hydrates the initial app shell in the browser for live API interactions.
+The UI follows the [Riso design system](frontend/DESIGN.md), with bundled local fonts.
+It supports organization CRUD, filters for every organization field, sorting,
+pagination, employee management, directory queries, and collection statistics.
+Swagger UI is available at `/ui/docs/`, with both OpenAPI contracts bundled locally.
+WildFly also serves live OpenAPI documents at `/openapi/organizations` and
+`/openapi/orgdirectory`. The SmallRye OpenAPI subsystem serves the explicit XML
+contracts packaged in each service WAR; annotation scanning is disabled because
+the handlers accept raw XML strings.
+
+`./gradlew uiWar` installs locked frontend dependencies, generates TypeScript
+contracts from both YAML specs, builds the Vite app, and packages `build/libs/ui.war`.
+Build prerequisites are Bun 1.3+ and Java 17+. No JavaScript runtime is needed on
+Helios to serve the frontend. Deployment does not write to `public_html`.
+
+Frontend development:
+
+```bash
+cd frontend
+bun install --frozen-lockfile
+bun run dev
+# Regenerate types only:
+bun run codegen
+# Build static HTML, JS, CSS, specs, and docs into dist/:
+bun run build
+bun run preview
+```
+
+Development requests to `/organizations` and `/orgdirectory` are proxied to
+`https://localhost:61811` (including an SSH tunnel). Accept the browser's self-signed
+certificate when accessing a deployed API directly. Set `VITE_API_BASE` to an API
+origin when hosting the frontend separately; deployment defaults to the same origin.
+The frontend uses the generated schema types from `frontend/src/generated/` and a
+small XML adapter, since these APIs exchange XML rather than JSON.
 
 - UI: `https://se.ifmo.ru:61811/ui/`
+- Swagger UI: `https://se.ifmo.ru:61811/ui/docs/`
 - Organizations: `https://se.ifmo.ru:61811/organizations`
 - Directory: `https://se.ifmo.ru:61811/orgdirectory/order/name/false`
 

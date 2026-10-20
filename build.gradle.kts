@@ -60,19 +60,27 @@ tasks.register("e2eTest") {
     dependsOn(":e2e-tests:test")
 }
 
-// Package Swagger UI connected to WildFly OpenAPI endpoints for the /ui context.
-val swaggerUi by tasks.registering(Exec::class) {
+// Build the Bun/Vite client as a fully static app for the /ui context.
+val frontendInstall by tasks.registering(Exec::class) {
     group = "build"
-    inputs.file("swagger/build.sh")
-    inputs.property("swaggerUiVersion", providers.environmentVariable("SWAGGER_UI_VERSION").orElse("5.33.0"))
-    outputs.dir("swagger/dist")
-    commandLine("bash", "swagger/build.sh")
+    workingDir("frontend")
+    inputs.files("frontend/package.json", "frontend/bun.lock")
+    outputs.dir("frontend/node_modules")
+    commandLine("bun", "install", "--frozen-lockfile")
+}
+val frontendBuild by tasks.registering(Exec::class) {
+    group = "build"
+    dependsOn(frontendInstall)
+    workingDir("frontend")
+    inputs.files(fileTree("frontend/src"), fileTree("frontend/scripts"), fileTree("frontend/docs"), fileTree("openapi"), file("frontend/index.html"), fileTree("frontend") { include("tsconfig*.json") }, file("frontend/package.json"), file("frontend/bun.lock"), file("frontend/vite.config.ts"))
+    outputs.dir("frontend/dist")
+    commandLine("bun", "run", "build")
 }
 
 tasks.register<Zip>("uiWar") {
     group = "build"
-    dependsOn(swaggerUi)
+    dependsOn(frontendBuild)
     archiveFileName.set("ui.war")
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
-    from("swagger/dist")
+    from("frontend/dist")
 }

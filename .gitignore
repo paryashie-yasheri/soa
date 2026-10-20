@@ -1,5 +1,8 @@
 # Generated static Swagger UI (rebuild with swagger/build.sh)
 /swagger/dist/
+/frontend/dist/
+/frontend/public/
+/frontend/.prerender/
 
 # Node / npm
 node_modules/
