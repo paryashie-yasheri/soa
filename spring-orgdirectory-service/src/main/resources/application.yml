@@ -1,0 +1,6 @@
+server:
+  port: ${SERVER_PORT:8080}
+  address: ${SERVER_ADDRESS:0.0.0.0}
+spring:
+  application:
+    name: soa-orgdirectory

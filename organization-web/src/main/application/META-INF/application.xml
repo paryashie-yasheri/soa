@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application xmlns="https://jakarta.ee/xml/ns/jakartaee" version="10">
+  <module><ejb>organization-ejb.jar</ejb></module>
+  <module><web><web-uri>organization-web.war</web-uri><context-root>/</context-root></web></module>
+</application>

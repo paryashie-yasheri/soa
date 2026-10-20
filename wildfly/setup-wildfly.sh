@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Runs on the machine that hosts WildFly (helios). It installs WildFly if needed, reads the
-# database credentials from .env (bootstrapped from ~/.pgpass), applies the TLS/data-source configuration and starts
-# the server with both JAX-RS applications.
+# database credentials from .env (bootstrapped from ~/.pgpass), applies TLS, datasource, EJB,
+# and Consul configuration, then starts the Java EE organization application.
 #
 # Expected layout, created by deploy-wildfly.sh:
-#   $DIR/deployments/ROOT.war, $DIR/deployments/orgdirectory.war
+#   $DIR/deployments/organization-service.ear, $DIR/deployments/ui.war
 #   $DIR/tls/server.p12, $DIR/tls/truststore.p12
 #   $DIR/modules/org/postgresql/main/{module.xml,postgresql-*.jar}
 #   $DIR/configure-wildfly.sh
@@ -32,6 +32,10 @@ if [[ -n "$SOA_PROXY_PORT" ]]; then
   DIR="$DIR" bash "$DIR/setup-proxy.sh" check
 fi
 SOA_KEYSTORE_PASSWORD="${SOA_KEYSTORE_PASSWORD:-changeit}"
+SOA_EJB_POOL_SIZE="${SOA_EJB_POOL_SIZE:-20}"
+SOA_CONSUL_URL="${SOA_CONSUL_URL:-http://127.0.0.1:8500}"
+SOA_CONSUL_SERVICE_ADDRESS="${SOA_CONSUL_SERVICE_ADDRESS:-127.0.0.1}"
+SOA_CONSUL_SERVICE_PORT="${SOA_CONSUL_SERVICE_PORT:-$SOA_HTTPS_PORT}"
 SCHEMA="${SCHEMA:-s389491}"
 PGPASS_FILE="${PGPASS_FILE:-$HOME/.pgpass}"
 
@@ -117,10 +121,11 @@ export SOA_DB_USER SOA_DB_PASSWORD
 export SOA_JDBC_URL="${SOA_JDBC_URL:-jdbc:postgresql://$PG_HOST:$PG_PORT/$PG_DB?currentSchema=$SCHEMA}"
 export SOA_HTTP_PORT SOA_HTTPS_PORT SOA_HTTPS_REDIRECT_PORT SOA_PUBLIC_HOST SOA_KEYSTORE_PASSWORD
 export SOA_ORGANIZATION_URL="${SOA_ORGANIZATION_URL:-https://localhost:$SOA_HTTPS_PORT}"
+export SOA_EJB_POOL_SIZE SOA_CONSUL_URL SOA_CONSUL_SERVICE_ADDRESS SOA_CONSUL_SERVICE_PORT
 
 # Bootstrap once from the existing pgpass; later starts use only this private .env.
 if [[ ! -e "$DIR/.env" ]]; then
-  (umask 077; for name in SOA_DB_USER SOA_DB_PASSWORD SOA_JDBC_URL SOA_HTTP_PORT SOA_HTTPS_PORT SOA_HTTPS_REDIRECT_PORT SOA_PUBLIC_HOST SOA_KEYSTORE_PASSWORD SOA_ORGANIZATION_URL; do
+  (umask 077; for name in SOA_DB_USER SOA_DB_PASSWORD SOA_JDBC_URL SOA_HTTP_PORT SOA_HTTPS_PORT SOA_HTTPS_REDIRECT_PORT SOA_PUBLIC_HOST SOA_KEYSTORE_PASSWORD SOA_ORGANIZATION_URL SOA_EJB_POOL_SIZE SOA_CONSUL_URL SOA_CONSUL_SERVICE_ADDRESS SOA_CONSUL_SERVICE_PORT; do
     printf '%s=%q\n' "$name" "${!name}"
   done) > "$DIR/.env"
 fi
@@ -150,9 +155,9 @@ log "Installing PostgreSQL driver module"
 mkdir -p "$WILDFLY_HOME/modules/org/postgresql/main"
 cp "$DIR/modules/org/postgresql/main/"* "$WILDFLY_HOME/modules/org/postgresql/main/"
 
-log "Deploying applications"
+log "Deploying the organization EAR"
 mkdir -p "$WILDFLY_HOME/standalone/deployments"
-cp "$DIR/deployments/ROOT.war" "$DIR/deployments/orgdirectory.war" "$DIR/deployments/ui.war" "$WILDFLY_HOME/standalone/deployments/"
+cp "$DIR/deployments/organization-service.ear" "$DIR/deployments/ui.war" "$WILDFLY_HOME/standalone/deployments/"
 
 log "Installing TLS material"
 install -m 600 "$DIR/tls/server.p12" "$WILDFLY_HOME/standalone/configuration/soa-server.p12"
@@ -205,7 +210,7 @@ fi
 if ! grep -q 'WFLYSRV0025' "$DIR/logs/wildfly.log"; then
   echo "WildFly startup timed out; see $DIR/logs/wildfly.log" >&2; exit 1
 fi
-for endpoint in /organizations /orgdirectory/order/name/false /openapi/organizations /openapi/orgdirectory /ui/; do
+for endpoint in /organizations /openapi/organizations /ui/; do
   curl --fail --silent --show-error --insecure --max-time 30 "https://localhost:$SOA_HTTPS_PORT$endpoint" > /dev/null
 done
 if [[ -n "$SOA_PROXY_PORT" ]]; then

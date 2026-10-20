@@ -20,8 +20,13 @@ SOA_JDBC_URL="${SOA_JDBC_URL:?SOA_JDBC_URL is required}"
 SOA_DB_USER="${SOA_DB_USER:?SOA_DB_USER is required}"
 SOA_DB_PASSWORD="${SOA_DB_PASSWORD:?SOA_DB_PASSWORD is required}"
 SOA_ORGANIZATION_URL="${SOA_ORGANIZATION_URL:-https://localhost:${SOA_HTTPS_PORT}}"
+SOA_EJB_POOL_SIZE="${SOA_EJB_POOL_SIZE:-20}"
+SOA_CONSUL_URL="${SOA_CONSUL_URL:-http://127.0.0.1:8500}"
+SOA_CONSUL_SERVICE_ADDRESS="${SOA_CONSUL_SERVICE_ADDRESS:-127.0.0.1}"
+SOA_CONSUL_SERVICE_PORT="${SOA_CONSUL_SERVICE_PORT:-$SOA_HTTPS_PORT}"
 
 export SOA_JDBC_URL SOA_DB_USER SOA_DB_PASSWORD SOA_KEYSTORE_PASSWORD SOA_ORGANIZATION_URL
+export SOA_EJB_POOL_SIZE SOA_CONSUL_URL SOA_CONSUL_SERVICE_ADDRESS SOA_CONSUL_SERVICE_PORT
 
 # Shared hosts often cap the account's address space, while the JVM would otherwise size its
 # heap to a quarter of physical RAM. Pin a small heap for the embedded server used by the CLI.
@@ -45,6 +50,9 @@ embed-server --server-config=standalone.xml --std-out=echo
 /subsystem=undertow/server=default-server/host=default-host/filter-ref=http-to-https:add(predicate="equals(%p, ${SOA_HTTP_PORT})")
 /socket-binding-group=standard-sockets/socket-binding=https:write-attribute(name=port, value=${SOA_HTTPS_PORT})
 
+# Configurable strict maximum pool used by the Stateless Session Beans.
+/subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:add(max-pool-size=${SOA_EJB_POOL_SIZE},instance-acquisition-timeout=5,instance-acquisition-timeout-unit=MINUTES)
+
 # Elytron TLS material (self-signed server certificate plus its own trust store).
 /subsystem=elytron/key-store=soaKeystore:add(path=soa-server.p12, relative-to=jboss.server.config.dir, type=PKCS12, credential-reference={clear-text=\${env.SOA_KEYSTORE_PASSWORD}})
 /subsystem=elytron/key-manager=soaKeyManager:add(key-store=soaKeystore, credential-reference={clear-text=\${env.SOA_KEYSTORE_PASSWORD}})
@@ -59,6 +67,9 @@ embed-server --server-config=standalone.xml --std-out=echo
 
 # Where the directory service reaches the organization service.
 /system-property=organization-service.url:add(value="\${env.SOA_ORGANIZATION_URL}")
+/system-property=soa.consul.url:add(value="\${env.SOA_CONSUL_URL}")
+/system-property=soa.consul.service.address:add(value="\${env.SOA_CONSUL_SERVICE_ADDRESS}")
+/system-property=soa.consul.service.port:add(value="\${env.SOA_CONSUL_SERVICE_PORT}")
 
 stop-embedded-server
 CLI_EOF
@@ -93,6 +104,14 @@ end-if
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=user-name, value="\${env.SOA_DB_USER}")
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=password, value="\${env.SOA_DB_PASSWORD}")
 /system-property=organization-service.url:write-attribute(name=value, value="\${env.SOA_ORGANIZATION_URL}")
+if (outcome != success) of /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:read-resource()
+  /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:add(max-pool-size=${SOA_EJB_POOL_SIZE},instance-acquisition-timeout=5,instance-acquisition-timeout-unit=MINUTES)
+else
+  /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:write-attribute(name=max-pool-size, value=${SOA_EJB_POOL_SIZE})
+end-if
+/system-property=soa.consul.url:write-attribute(name=value, value="\${env.SOA_CONSUL_URL}")
+/system-property=soa.consul.service.address:write-attribute(name=value, value="\${env.SOA_CONSUL_SERVICE_ADDRESS}")
+/system-property=soa.consul.service.port:write-attribute(name=value, value="\${env.SOA_CONSUL_SERVICE_PORT}")
 stop-embedded-server
 CLI_EOF
 

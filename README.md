@@ -78,7 +78,7 @@ public enum OrganizationType {
 
 # Лабораторная работа №2
 
-Вариант 67321
+Вариант 67321 — лабораторная работа №2
 
 Внимание! У разных вариантов разный текст задания!
 
@@ -230,3 +230,13 @@ private key. Proxy configuration, PID and logs are under `~/soa-lab2/`.
 
 This uses the isolated PostgreSQL/WildFly stack in `wildfly/compose.yaml`.
 The local test database is separate from Helios.
+
+## Лабораторная работа №3 (вариант 67352)
+
+Вызываемый сервис собран как EAR из двух модулей: `organization-web.war` с JAX-RS API и `organization-ejb.jar` с моделью, репозиториями и бизнес-логикой. Операции выполняются Stateless Session Beans через удалённый интерфейс `OrganizationRemote`. WildFly назначает им настраиваемый пул `soa-stateless-pool`; размер задаётся через `SOA_EJB_POOL_SIZE` (по умолчанию 20). При старте EJB модуль регистрирует HTTPS адрес Organization Service в Consul и удаляет запись при остановке.
+
+Вызывающий сервис реализован на Spring Boot. `spring-orgdirectory-service` ищет Organization Service через Consul Catalog API, сохраняя `ORGANIZATION_SERVICE_URL` как запасной адрес. Две отдельные копии Spring Boot слушают порты 61813 и 61814; HAProxy балансирует запросы `/orgdirectory/...` по round-robin через HTTPS порт 61815. Все остальные пути, включая Swagger UI и `/organizations`, проксируются в WildFly. Контракт API и клиентские URL Lab 2 сохранены.
+
+Собрать артефакты можно командой `./gradlew lab3Bundle`. Локальный стенд запускается командой `./gradlew lab3StackUp`, останавливается командой `./gradlew lab3StackDown`. В `wildfly/compose.yaml` входят WildFly, Consul, две Spring Boot копии и HAProxy. Доступны Organization Service на `https://localhost:62811`, API каталога через балансировщик на `https://localhost:62812/orgdirectory/...`, экземпляры Spring Boot на `http://localhost:61813` и `http://localhost:61814`, а Consul UI — на `http://localhost:18500/ui/`. Самоподписанный сертификат пробрасывается только локально.
+
+Для развёртывания на Helios `deploy-wildfly.sh` упаковывает EAR и Spring Boot JAR и запускает две копии за HAProxy. На Helios должны быть установлены и запущены Consul Agent на `127.0.0.1:8500` и `haproxy`; адрес, порты, Consul URL и размер пула можно переопределить переменными окружения перед запуском. Конфигурация HAProxy находится в `haproxy/helios.cfg`.

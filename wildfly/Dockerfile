@@ -15,8 +15,9 @@ ENV SOA_JDBC_URL="jdbc:postgresql://db:5432/soa?currentSchema=s389491" \
 # PostgreSQL driver installed as a JBoss module referenced by the data source.
 COPY --chown=jboss:jboss wildfly/postgresql-module/ ${WILDFLY_HOME}/modules/org/postgresql/main/
 
-# The two JAX-RS applications. The WAR names set the context roots: / and /orgdirectory.
-COPY --chown=jboss:jboss organization-service/build/libs/ROOT.war ${WILDFLY_HOME}/standalone/deployments/ROOT.war
+# Organization service is an EAR containing a web module plus the Stateless EJB-JAR.
+COPY --chown=jboss:jboss build/libs/organization-service.ear ${WILDFLY_HOME}/standalone/deployments/organization-service.ear
+# Keep the Lab 2 caller WAR available for the existing API compatibility stack.
 COPY --chown=jboss:jboss orgdirectory-service/build/libs/orgdirectory.war ${WILDFLY_HOME}/standalone/deployments/orgdirectory.war
 
 COPY --chown=jboss:jboss build/libs/ui.war ${WILDFLY_HOME}/standalone/deployments/ui.war
@@ -37,6 +38,9 @@ RUN chmod +x /tmp/configure-wildfly.sh \
        SOA_DB_USER=soa \
        SOA_DB_PASSWORD=soa-local \
        SOA_ORGANIZATION_URL="https://localhost:61811" \
+       SOA_CONSUL_URL="http://consul:8500" \
+       SOA_CONSUL_SERVICE_ADDRESS="app" \
+       SOA_CONSUL_SERVICE_PORT=61811 \
        /tmp/configure-wildfly.sh \
     && rm -f /tmp/configure-wildfly.sh
 

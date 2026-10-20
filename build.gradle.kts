@@ -60,6 +60,27 @@ tasks.register("e2eTest") {
     dependsOn(":e2e-tests:test")
 }
 
+tasks.register("lab3Bundle") {
+    group = "build"
+    description = "Builds the Lab 3 EAR, compatibility WAR, caller replicas and UI."
+    dependsOn("organizationEar", ":orgdirectory-service:war", ":spring-orgdirectory-service:bootJar", "uiWar")
+}
+
+tasks.register<Exec>("lab3StackUp") {
+    group = "application"
+    description = "Starts the local Lab 3 WildFly, Consul, Spring Boot replicas and HAProxy stack."
+    dependsOn("lab3Bundle", "generateTls", "copyPostgresDriver")
+    workingDir = rootProject.projectDir
+    commandLine("docker", "compose", "-f", "wildfly/compose.yaml", "up", "-d", "--build", "--wait")
+}
+
+tasks.register<Exec>("lab3StackDown") {
+    group = "application"
+    description = "Stops the local Lab 3 stack and removes its disposable PostgreSQL volume."
+    workingDir = rootProject.projectDir
+    commandLine("docker", "compose", "-f", "wildfly/compose.yaml", "down", "-v")
+}
+
 // Build the Bun/Vite client as a fully static app for the /ui context.
 val frontendInstall by tasks.registering(Exec::class) {
     group = "build"
@@ -83,4 +104,24 @@ tasks.register<Zip>("uiWar") {
     archiveFileName.set("ui.war")
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     from("frontend/dist")
+}
+
+tasks.register<Zip>("organizationEar") {
+    group = "build"
+    description = "Packages the organization web module and its EJB-JAR into an EAR."
+    dependsOn(":organization-ejb:jar", ":organization-web:war")
+    archiveBaseName.set("organization-service")
+    archiveVersion.set("")
+    archiveFileName.set("organization-service.ear")
+    archiveVersion.set("")
+    archiveFileName.set("organization-service.ear")
+    archiveExtension.set("ear")
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    from(project(":organization-ejb").layout.buildDirectory.file("libs/organization-ejb.jar"))
+    from(project(":organization-web").layout.buildDirectory.file("libs/organization-web.war"))
+    // Kotlin classes in the EJB module need the matching stdlib at runtime on WildFly.
+    from(project(":organization-ejb").configurations.getByName("runtimeClasspath").filter { it.isFile && it.extension == "jar" }) {
+        into("lib")
+    }
+    from("organization-web/src/main/application")
 }

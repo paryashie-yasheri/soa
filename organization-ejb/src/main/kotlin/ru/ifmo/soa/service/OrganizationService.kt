@@ -1,20 +1,22 @@
 package ru.ifmo.soa.service
 
-import jakarta.enterprise.context.ApplicationScoped
+import jakarta.ejb.Stateless
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
 import ru.ifmo.soa.model.*
 import ru.ifmo.soa.repository.OrganizationRepository
 
+@jakarta.ejb.ApplicationException(rollback = true)
 class ServiceFault(val status: Int, override val message: String) : RuntimeException(message)
 
-@ApplicationScoped
-class OrganizationService {
+@Stateless(name = "OrganizationService", mappedName = "ejb/OrganizationService")
+@org.jboss.ejb3.annotation.Pool("soa-stateless-pool")
+class OrganizationService : OrganizationRemote {
     @field:Inject
     private lateinit var repository: OrganizationRepository
 
     @Transactional
-    fun list(filter: OrganizationFilter, sortBy: List<String>, descending: Boolean, page: Int, size: Int): OrganizationPage {
+    override fun list(filter: OrganizationFilter, sortBy: List<String>, descending: Boolean, page: Int, size: Int): OrganizationPage {
         if (page < 1) throw ServiceFault(400, "page должен быть не меньше 1")
         if (size !in 1..100) throw ServiceFault(400, "size должен быть от 1 до 100")
         val allowed = setOf(
@@ -47,42 +49,42 @@ class OrganizationService {
     }
 
     @Transactional
-    fun get(id: Int): Organization {
+    override fun get(id: Int): Organization {
         if (id < 1) throw ServiceFault(400, "id должен быть больше 0")
         return repository.modelById(id) ?: throw ServiceFault(404, "Организация не найдена")
     }
 
     @Transactional
-    fun create(input: OrganizationInput): Organization {
+    override fun create(input: OrganizationInput): Organization {
         validate(input)
         return repository.create(input)
     }
 
     @Transactional
-    fun update(id: Int, input: OrganizationInput): Organization {
+    override fun update(id: Int, input: OrganizationInput): Organization {
         if (id < 1) throw ServiceFault(400, "id должен быть больше 0")
         validate(input)
         return repository.update(id, input) ?: throw ServiceFault(404, "Организация не найдена")
     }
 
     @Transactional
-    fun delete(id: Int) {
+    override fun delete(id: Int) {
         if (id < 1) throw ServiceFault(400, "id должен быть больше 0")
         if (!repository.removeOrganization(id)) throw ServiceFault(404, "Организация не найдена")
     }
 
     @Transactional
-    fun groupedByName(): Map<String, Int> =
+    override fun groupedByName(): Map<String, Int> =
         repository.allModels().groupingBy { it.name }.eachCount().toSortedMap()
 
     @Transactional
-    fun countTurnoverBelow(value: Int): Long {
+    override fun countTurnoverBelow(value: Int): Long {
         if (value < 1) throw ServiceFault(400, "value должен быть больше 0")
         return repository.allModels().count { it.annualTurnover != null && it.annualTurnover < value }.toLong()
     }
 
     @Transactional
-    fun uniqueTurnovers(): List<Int?> =
+    override fun uniqueTurnovers(): List<Int?> =
         repository.allModels().map { it.annualTurnover }.distinct().sortedWith(compareBy<Int?> { it })
 
     private fun validate(input: OrganizationInput) {
@@ -103,4 +105,11 @@ class OrganizationService {
         "type" -> a.type.name.compareTo(b.type.name)
         else -> a.postalAddress.street.compareTo(b.postalAddress.street)
     }
+
+    override fun employees(organizationId: Int) = employeeService.list(organizationId)
+    override fun addEmployee(organizationId: Int, input: EmployeeInput) = employeeService.add(organizationId, input)
+    override fun deleteEmployee(organizationId: Int, employeeId: Int) = employeeService.delete(organizationId, employeeId)
+
+    @field:jakarta.inject.Inject
+    private lateinit var employeeService: EmployeeService
 }

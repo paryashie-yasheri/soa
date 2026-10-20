@@ -16,7 +16,7 @@ val composeFile = "wildfly/compose.yaml"
 val stackUp = tasks.register<Exec>("stackUp") {
     group = "verification"
     description = "Builds and starts the WildFly verification stack with Docker Compose."
-    dependsOn(":uiWar", ":copyPostgresDriver", ":generateTls", ":organization-service:war", ":orgdirectory-service:war")
+    dependsOn(":uiWar", ":copyPostgresDriver", ":generateTls", ":organizationEar", ":orgdirectory-service:war", ":spring-orgdirectory-service:bootJar")
     workingDir = rootProject.projectDir
     commandLine("docker", "compose", "-f", composeFile, "up", "-d", "--build", "--wait")
     finalizedBy("stackDown")
@@ -32,7 +32,7 @@ val stackDown = tasks.register<Exec>("stackDown") {
 tasks.test {
     useJUnitPlatform()
     maxParallelForks = 1
-    dependsOn(":organization-service:war", ":orgdirectory-service:war", stackUp)
+    dependsOn(":organizationEar", ":orgdirectory-service:war", ":spring-orgdirectory-service:bootJar", stackUp)
     finalizedBy(stackDown)
     mustRunAfter("openapiExamples")
     outputs.upToDateWhen { false }

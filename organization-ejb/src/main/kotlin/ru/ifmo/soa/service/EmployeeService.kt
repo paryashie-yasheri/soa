@@ -1,6 +1,6 @@
 package ru.ifmo.soa.service
 
-import jakarta.enterprise.context.ApplicationScoped
+import jakarta.ejb.Stateless
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
 import ru.ifmo.soa.model.Employee
@@ -8,7 +8,8 @@ import ru.ifmo.soa.model.EmployeeInput
 import ru.ifmo.soa.repository.EmployeeRepository
 import ru.ifmo.soa.repository.OrganizationRepository
 
-@ApplicationScoped
+@Stateless
+@org.jboss.ejb3.annotation.Pool("soa-stateless-pool")
 class EmployeeService {
     @field:Inject
     private lateinit var organizations: OrganizationRepository

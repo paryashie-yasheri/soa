@@ -1,14 +1,14 @@
 package ru.ifmo.soa.resource
 
 import jakarta.enterprise.context.ApplicationScoped
-import jakarta.inject.Inject
+import jakarta.ejb.EJB
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.core.UriInfo
 import ru.ifmo.soa.model.*
-import ru.ifmo.soa.service.OrganizationService
+import ru.ifmo.soa.service.OrganizationRemote
 import java.time.LocalDate
 
 @ApplicationScoped
@@ -16,8 +16,8 @@ import java.time.LocalDate
 @Produces(MediaType.APPLICATION_XML)
 @Consumes(MediaType.APPLICATION_XML)
 class OrganizationResource {
-    @field:Inject
-    private lateinit var service: OrganizationService
+    @field:EJB
+    private lateinit var service: OrganizationRemote
 
     @GET
     fun list(@Context uri: UriInfo): Response = api {

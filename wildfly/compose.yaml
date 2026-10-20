@@ -1,4 +1,10 @@
 services:
+  consul:
+    image: hashicorp/consul:1.20
+    command: agent -dev -client=0.0.0.0 -ui
+    ports:
+      - "127.0.0.1:18500:8500"
+
   db:
     image: postgres:16-alpine
     environment:
@@ -26,7 +32,52 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      consul:
+        condition: service_started
+    environment:
+      SOA_CONSUL_URL: http://consul:8500
+      SOA_CONSUL_SERVICE_ADDRESS: app
+      SOA_CONSUL_SERVICE_PORT: 61811
     ports:
       - "127.0.0.1:${SOA_TEST_HTTP_PORT:-62810}:61810"
       - "127.0.0.1:${SOA_TEST_HTTPS_PORT:-62811}:61811"
+
+  orgdirectory1:
+    build:
+      context: ..
+      dockerfile: spring-orgdirectory-service/docker/Dockerfile
+    environment:
+      SERVER_PORT: 8080
+      ORGANIZATION_SERVICE_URL: https://app:61811
+      CONSUL_HTTP_ADDR: http://consul:8500
+    depends_on:
+      - app
+      - consul
+    ports:
+      - "127.0.0.1:61813:8080"
+
+  orgdirectory2:
+    build:
+      context: ..
+      dockerfile: spring-orgdirectory-service/docker/Dockerfile
+    environment:
+      SERVER_PORT: 8080
+      ORGANIZATION_SERVICE_URL: https://app:61811
+      CONSUL_HTTP_ADDR: http://consul:8500
+    depends_on:
+      - app
+      - consul
+    ports:
+      - "127.0.0.1:61814:8080"
+
+  haproxy:
+    image: haproxy:3.1-alpine
+    volumes:
+      - ../haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ../tls/haproxy.pem:/usr/local/etc/haproxy/haproxy.pem:ro
+    depends_on:
+      - orgdirectory1
+      - orgdirectory2
+    ports:
+      - "127.0.0.1:62812:8080"
 
