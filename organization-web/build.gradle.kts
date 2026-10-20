@@ -5,6 +5,9 @@ dependencies {
     compileOnly("jakarta.platform:jakarta.jakartaee-api:10.0.0")
     compileOnly(project(":organization-ejb"))
     implementation("org.liquibase:liquibase-core:4.30.0")
+    testImplementation(project(":organization-ejb"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
 }
 java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach { compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
