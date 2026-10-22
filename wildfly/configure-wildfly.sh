@@ -37,9 +37,7 @@ trap 'rm -rf "$WORK"' EXIT
 cat > "$WORK/create.cli" <<CLI_EOF
 embed-server --server-config=standalone.xml --std-out=echo
 
-# The remote EJB connector rides on the plaintext listener, so it goes away with it.
-/subsystem=ejb3/service=remote:remove()
-/subsystem=remoting/http-connector=http-remoting-connector:remove()
+# Keep the remote EJB view used by the JAX-RS WAR, but move it off the plaintext listener.
 
 # Keep an HTTP listener only to redirect requests to the HTTPS socket.
 # Remove the stock listener name before adding our redirect-only listener.
@@ -51,7 +49,7 @@ embed-server --server-config=standalone.xml --std-out=echo
 /socket-binding-group=standard-sockets/socket-binding=https:write-attribute(name=port, value=${SOA_HTTPS_PORT})
 
 # Configurable strict maximum pool used by the Stateless Session Beans.
-/subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:add(max-pool-size=${SOA_EJB_POOL_SIZE},instance-acquisition-timeout=5,instance-acquisition-timeout-unit=MINUTES)
+/subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:add(max-pool-size=${SOA_EJB_POOL_SIZE},timeout=5,timeout-unit=MINUTES)
 
 # Elytron TLS material (self-signed server certificate plus its own trust store).
 /subsystem=elytron/key-store=soaKeystore:add(path=soa-server.p12, relative-to=jboss.server.config.dir, type=PKCS12, credential-reference={clear-text=\${env.SOA_KEYSTORE_PASSWORD}})
@@ -60,6 +58,7 @@ embed-server --server-config=standalone.xml --std-out=echo
 /subsystem=elytron/trust-manager=soaTrustManager:add(key-store=soaTruststore)
 /subsystem=elytron/server-ssl-context=soaSsl:add(key-manager=soaKeyManager, trust-manager=soaTrustManager, protocols=["TLSv1.2","TLSv1.3"])
 /subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context, value=soaSsl)
+/subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref, value=https)
 
 # PostgreSQL driver and the shared schema data source.
 /subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql, driver-module-name=org.postgresql, driver-class-name=org.postgresql.Driver)
@@ -100,12 +99,13 @@ end-if
 /subsystem=undertow/server=default-server/host=default-host/filter-ref=http-to-https:add(predicate="equals(%p, ${SOA_HTTP_PORT})")
 /socket-binding-group=standard-sockets/socket-binding=https:write-attribute(name=port, value=${SOA_HTTPS_PORT})
 /subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context, value=soaSsl)
+/subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref, value=https)
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=connection-url, value="\${env.SOA_JDBC_URL}")
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=user-name, value="\${env.SOA_DB_USER}")
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=password, value="\${env.SOA_DB_PASSWORD}")
 /system-property=organization-service.url:write-attribute(name=value, value="\${env.SOA_ORGANIZATION_URL}")
 if (outcome != success) of /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:read-resource()
-  /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:add(max-pool-size=${SOA_EJB_POOL_SIZE},instance-acquisition-timeout=5,instance-acquisition-timeout-unit=MINUTES)
+  /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:add(max-pool-size=${SOA_EJB_POOL_SIZE},timeout=5,timeout-unit=MINUTES)
 else
   /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:write-attribute(name=max-pool-size, value=${SOA_EJB_POOL_SIZE})
 end-if

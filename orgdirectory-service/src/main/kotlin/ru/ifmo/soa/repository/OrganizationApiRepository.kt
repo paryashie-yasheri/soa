@@ -32,17 +32,28 @@ class OrganizationApiRepository {
         var page = 1
         var total = Int.MAX_VALUE
         val result = mutableListOf<OrganizationDocument>()
+        val ids = mutableSetOf<Int>()
         while (result.size < total) {
             val sort = sortBy?.let {
                 "&sortBy=${encode(it)}&sortOrder=${if (descending) "desc" else "asc"}"
             } ?: ""
             val root = parse(get("/organizations?page=$page&size=100$sort")).documentElement
-            total = root.child("total")?.textContent?.toInt()
-                ?: error("Organization Service вернул XML без total")
-            check(root.tagName == "organizations" && total >= 0) { "Некорректная страница Organization Service" }
+            check(root.tagName == "organizations") { "Organization Service вернул неверный корневой XML-элемент" }
+            val pageTotal = root.child("total")?.textContent?.trim()?.toIntOrNull()
+                ?: error("Organization Service вернул XML без корректного total")
+            check(pageTotal >= 0) { "Некорректная страница Organization Service" }
+            if (page == 1) total = pageTotal else {
+                check(pageTotal == total) { "Organization Service изменил total в середине пагинации" }
+            }
             val items = children(root)
                 .filter { it.tagName == "organization" }
-                .map { element -> OrganizationDocument(element.getAttribute("id").toInt(), serialize(element)) }
+                .map { element ->
+                    val id = element.getAttribute("id").toIntOrNull()
+                    check(id != null && id > 0) { "Organization Service вернул некорректный id" }
+                    check(ids.add(id)) { "Organization Service повторил организацию при пагинации" }
+                    OrganizationDocument(id, serialize(element))
+                }
+            check(result.size + items.size <= total) { "Organization Service вернул больше элементов, чем total" }
             check(items.isNotEmpty() || result.size >= total) { "Organization Service вернул пустую страницу до конца результата" }
             result += items
             page++
