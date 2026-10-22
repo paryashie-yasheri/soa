@@ -6,7 +6,8 @@
 - Variant summaries are in `docs/lab3-variants/` when present. Check the current branch's `README.md`, `README-lab3-*.md`, `lab2.typ`, and the relevant Compose/deployment files for the authoritative details.
 - Preserve the Lab 1/2 API contract across Lab 3 changes: XML payloads, existing paths, HTTP methods/statuses, and documented headers.
 - Lab 2 explicitly requires HTTPS with a self-signed certificate and forbids plaintext HTTP. Local certificate warnings are expected. Do not disable browser certificate validation or add project certificates to the machine-wide trust store as a test shortcut.
-- Use the public entry point and port documented for the active variant. Backend container ports are not necessarily the client/gateway entry point. For example, variant 67322 publishes its Zuul gateway separately from its legacy WildFly backend.
+- HTTPS is a protocol requirement, not a request to configure global browser trust. For local CLI checks, use the test-specific truststore or `curl -k` only when checking reachability; never treat certificate bypass as successful browser validation.
+- Use the public entry point and port documented for the active variant. Backend container ports are not necessarily the client/gateway entry point. For example, variant 67322 serves the client via `https://localhost:61811/ui/`; port `62811` is its legacy WildFly backend. In the base Lab 2 stack, `https://127.0.0.1:62811/ui/` is the client endpoint. Plain HTTP is expected to fail.
 - Known deployment caveat in the Lab 2 README: both JAX-RS applications currently share one WildFly instance although the assignment asks for a second instance for the caller. Do not claim complete Lab 2 deployment compliance without resolving or explicitly discussing this.
 
 ## Build and verification
