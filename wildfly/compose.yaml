@@ -4,6 +4,12 @@ services:
     command: agent -dev -client=0.0.0.0 -ui
     ports:
       - "127.0.0.1:18500:8500"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   db:
     image: postgres:16-alpine
@@ -33,7 +39,7 @@ services:
       db:
         condition: service_healthy
       consul:
-        condition: service_started
+        condition: service_healthy
     environment:
       SOA_CONSUL_URL: http://consul:8500
       SOA_CONSUL_SERVICE_ADDRESS: app
@@ -41,6 +47,12 @@ services:
     ports:
       - "127.0.0.1:${SOA_TEST_HTTP_PORT:-62810}:61810"
       - "127.0.0.1:${SOA_TEST_HTTPS_PORT:-62811}:61811"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--insecure", "--max-time", "8", "https://localhost:61811/organizations"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 5m
 
   orgdirectory1:
     build:
@@ -51,10 +63,18 @@ services:
       ORGANIZATION_SERVICE_URL: https://app:61811
       CONSUL_HTTP_ADDR: http://consul:8500
     depends_on:
-      - app
-      - consul
+      app:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
     ports:
       - "127.0.0.1:61813:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--max-time", "8", "http://localhost:8080/order/name/false"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 3m
 
   orgdirectory2:
     build:
@@ -65,10 +85,18 @@ services:
       ORGANIZATION_SERVICE_URL: https://app:61811
       CONSUL_HTTP_ADDR: http://consul:8500
     depends_on:
-      - app
-      - consul
+      app:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
     ports:
       - "127.0.0.1:61814:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--max-time", "8", "http://localhost:8080/order/name/false"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 3m
 
   haproxy:
     image: haproxy:3.1-alpine
@@ -76,8 +104,10 @@ services:
       - ../haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       - ../tls/haproxy.pem:/usr/local/etc/haproxy/haproxy.pem:ro
     depends_on:
-      - orgdirectory1
-      - orgdirectory2
+      orgdirectory1:
+        condition: service_healthy
+      orgdirectory2:
+        condition: service_healthy
     ports:
       - "127.0.0.1:62812:8080"
 

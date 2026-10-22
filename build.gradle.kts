@@ -73,7 +73,7 @@ tasks.register<Exec>("lab3StackUp") {
     description = "Starts the local Lab 3 WildFly, Consul, Spring Boot replicas and HAProxy stack."
     dependsOn("lab3Bundle", "generateTls", "copyPostgresDriver")
     workingDir = rootProject.projectDir
-    commandLine("docker", "compose", "-f", "wildfly/compose.yaml", "up", "-d", "--build", "--wait")
+    commandLine("bash", "wildfly/run-local-stack.sh")
 }
 
 tasks.register<Exec>("lab3StackDown") {
