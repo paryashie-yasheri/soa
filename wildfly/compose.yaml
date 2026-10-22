@@ -70,7 +70,9 @@ services:
     ports:
       - "127.0.0.1:61813:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--max-time", "8", "http://localhost:8080/order/name/false"]
+      # The Temurin JRE image has no curl. Check that Spring has bound its HTTP port;
+      # Compose bounds the check with timeout/retries and the finite start_period.
+      test: ["CMD-SHELL", "grep -Eq ':1F90[[:space:]]+[^[:space:]]+[[:space:]]+0A([[:space:]]|$)' /proc/net/tcp /proc/net/tcp6"]
       interval: 5s
       timeout: 10s
       retries: 24
@@ -92,7 +94,7 @@ services:
     ports:
       - "127.0.0.1:61814:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--max-time", "8", "http://localhost:8080/order/name/false"]
+      test: ["CMD-SHELL", "grep -Eq ':1F90[[:space:]]+[^[:space:]]+[[:space:]]+0A([[:space:]]|$)' /proc/net/tcp /proc/net/tcp6"]
       interval: 5s
       timeout: 10s
       retries: 24
