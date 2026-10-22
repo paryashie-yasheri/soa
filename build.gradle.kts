@@ -1,6 +1,8 @@
 plugins {
     kotlin("jvm") version "2.1.20" apply false
     kotlin("plugin.allopen") version "2.1.20" apply false
+    kotlin("plugin.spring") version "2.1.20" apply false
+    id("org.springframework.boot") version "3.4.4" apply false
 }
 
 val postgresDriver by configurations.creating
