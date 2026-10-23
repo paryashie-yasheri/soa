@@ -18,7 +18,7 @@ class DirectoryService {
     private lateinit var repository: OrganizationApiRepository
 
     fun filterByEmployeeCount(minimum: Int, maximum: Int): List<String> {
-        if (minimum < 0 || maximum < minimum) {
+        if (minimum !in 0..maximum) {
             throw DirectoryFault(400, "Диапазон количества сотрудников некорректен")
         }
         return guarded {
@@ -37,9 +37,9 @@ class DirectoryService {
 
     private inline fun <T> guarded(block: () -> T): T = try {
         block()
-    } catch (e: DirectoryTimeout) {
+    } catch (_: DirectoryTimeout) {
         throw DirectoryFault(504, "Истекло время ожидания ответа от Organization Service")
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         throw DirectoryFault(502, "Organization Service вернул ошибочный ответ")
     }
 }
