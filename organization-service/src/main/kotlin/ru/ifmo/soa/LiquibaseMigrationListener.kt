@@ -11,10 +11,6 @@ import liquibase.resource.ClassLoaderResourceAccessor
 import javax.naming.InitialContext
 import javax.sql.DataSource
 
-/**
- * Applies the Liquibase changelog against the shared schema before the application serves traffic.
- * The schema itself already exists on the target database, so only tables and indexes are managed here.
- */
 @WebListener
 class LiquibaseMigrationListener : ServletContextListener {
     override fun contextInitialized(event: ServletContextEvent) {

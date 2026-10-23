@@ -8,10 +8,6 @@ import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.Provider
 import jakarta.ws.rs.container.PreMatching
 
-/**
- * The browser client is served from a different origin (static hosting on port 443),
- * so every response must carry CORS headers and preflight requests must be answered here.
- */
 @Provider
 @PreMatching
 class CorsFilter : ContainerRequestFilter, ContainerResponseFilter {

@@ -20,14 +20,6 @@ import javax.net.ssl.X509TrustManager
 import javax.xml.parsers.DocumentBuilderFactory
 import org.xml.sax.InputSource
 
-/**
- * Exercises the WildFly deployment produced by `wildfly/Dockerfile`: both JAX-RS applications
- * behind a single TLS listener on port 61811, React client at /ui and Swagger UI at /ui/docs, and the
- * shared PostgreSQL schema migrated by Liquibase.
- *
- * The stack itself is started and stopped by the `stackUp`/`stackDown` Gradle tasks that wrap
- * `wildfly/compose.yaml`; this suite only talks to the already running deployment.
- */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WildFlyStackE2ETest {
     private val httpsPort = System.getenv("SOA_TEST_HTTPS_PORT") ?: "62811"
