@@ -25,7 +25,9 @@
   --success-wash: #e6eedc;
   --danger: #b91c1c;
   --danger-wash: #f8e5e2;
-  --print-shadow: 4px 4px 0 var(--ink-blue);
+  --shadow-color: var(--ink-blue);
+  --shadow-accent: var(--brand-pink);
+  --print-shadow: 4px 4px 0 var(--shadow-color);
   --ink: var(--ink-blue);
   --muted: var(--ink-muted);
   --line: var(--rule);
@@ -39,6 +41,41 @@
   --secondary-foreground: var(--paper);
   --border: var(--rule);
   --ring: var(--brand-pink);
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #171923;
+  --ink-blue: #e1e4ff;
+  --ink-muted: #b0b6d2;
+  --brand-pink: #ff70bd;
+  --pink-hover: #ff98ce;
+  --button-ink: #211421;
+  --rule: #51566f;
+  --wash: #262a38;
+  --success: #87d7a0;
+  --success-wash: #263d31;
+  --danger: #ff928e;
+  --danger-wash: #482b32;
+  --shadow-color: #303341;
+  --shadow-accent: #75415e;
+  --print-shadow: 4px 4px 0 var(--shadow-color);
+  --ink: var(--ink-blue);
+  --muted: var(--ink-muted);
+  --line: var(--rule);
+  --surface: var(--paper);
+  --soft: var(--wash);
+  --background: var(--paper);
+  --foreground: var(--ink-blue);
+  --primary: var(--brand-pink);
+  --primary-foreground: var(--button-ink);
+  --secondary: var(--ink-blue);
+  --secondary-foreground: var(--paper);
+  --border: var(--rule);
+  --ring: var(--brand-pink);
+}
+[data-theme="dark"] body {
+  background: var(--paper);
 }
 * {
   box-sizing: border-box;
@@ -66,6 +103,8 @@ a {
 }
 .shell {
   min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink-blue);
 }
 .sidebar {
   width: 252px;
@@ -344,7 +383,7 @@ a {
 }
 .button.primary {
   background: var(--brand-pink);
-  color: var(--ink-muted);
+  color: var(--button-ink);
   box-shadow: none;
 }
 .button.primary:hover {
@@ -356,9 +395,15 @@ a {
   border-color: var(--ink-muted);
 }
 .button.secondary:hover {
-  background: var(--paper);
+  background: var(--wash);
   border-color: var(--ink-muted);
   color: var(--ink-muted);
+}
+.theme-toggle {
+  border: 1px solid var(--line);
+}
+.theme-toggle:hover {
+  background: var(--wash);
 }
 .metric-row {
   display: grid;
@@ -1360,7 +1405,7 @@ body::after {
   background: var(--ink-blue);
   color: var(--paper);
   border-radius: 2px;
-  box-shadow: 3px 3px 0 var(--brand-pink);
+  box-shadow: 3px 3px 0 var(--shadow-accent);
 }
 .brand small {
   font:
@@ -1410,7 +1455,7 @@ body::after {
   color: var(--button-ink);
   background: var(--brand-pink);
   border-color: var(--ink-blue);
-  box-shadow: 2px 2px 0 var(--ink-blue);
+  box-shadow: 2px 2px 0 var(--shadow-color);
 }
 .nav-count,
 .nav-chevron,
@@ -1493,26 +1538,26 @@ body::after {
 .button.primary {
   color: var(--button-ink);
   background: var(--brand-pink);
-  box-shadow: 3px 3px 0 var(--ink-blue);
+  box-shadow: 3px 3px 0 var(--shadow-color);
 }
 .button.secondary {
   color: var(--ink-blue);
   background: var(--paper);
   border-color: var(--ink-blue);
-  box-shadow: 2px 2px 0 var(--ink-blue);
+  box-shadow: 2px 2px 0 var(--shadow-color);
 }
 .button.primary:hover {
   color: var(--button-ink);
   background: var(--pink-hover);
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--ink-blue);
+  box-shadow: 4px 4px 0 var(--shadow-color);
 }
 .button.secondary:hover {
   color: var(--ink-blue);
   background: var(--wash);
   border-color: var(--ink-blue);
   transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 var(--ink-blue);
+  box-shadow: 3px 3px 0 var(--shadow-color);
 }
 .button:active {
   transform: translate(2px, 2px);
@@ -1780,7 +1825,7 @@ tbody tr:hover {
   background: var(--brand-pink);
   color: var(--button-ink);
   border: 1px solid var(--ink-blue);
-  box-shadow: 2px 2px 0 var(--ink-blue);
+  box-shadow: 2px 2px 0 var(--shadow-color);
 }
 .query-panel > .form-grid,
 .query-panel > .endpoint-preview {
@@ -1864,13 +1909,13 @@ tbody tr:hover {
   font-size: 14px;
 }
 .dialog-overlay {
-  background: rgb(44 64 167 / 0.3);
+  background: rgb(8 10 18 / 0.68);
   backdrop-filter: blur(2px);
 }
 .dialog-content {
   border: 2px solid var(--ink-blue);
   border-radius: 2px;
-  box-shadow: 8px 8px 0 var(--ink-blue);
+  box-shadow: 8px 8px 0 var(--shadow-color);
   padding: 24px;
 }
 .dialog-title-row h2 {
@@ -2042,7 +2087,7 @@ select:focus {
 .brand-icon {
   background: var(--brand-pink);
   color: var(--button-ink);
-  box-shadow: 3px 3px 0 var(--ink-blue);
+  box-shadow: 3px 3px 0 var(--shadow-color);
 }
 .nav-count {
   font-size: 12px;

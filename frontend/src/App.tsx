@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   flexRender,
@@ -26,6 +26,7 @@ import {
   Gauge,
   GitBranch,
   LoaderCircle,
+  Moon,
   Plus,
   RefreshCw,
   Search,
@@ -34,6 +35,7 @@ import {
   Trash2,
   Users,
   X,
+  Sun,
 } from "lucide-react";
 import {
   addEmployee,
@@ -79,6 +81,12 @@ const fieldOptions = [
 ];
 
 function App() {
+  const [darkTheme, setDarkTheme] = useState(false);
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("orbit-theme") === "dark";
+    setDarkTheme(savedTheme);
+    document.documentElement.dataset.theme = savedTheme ? "dark" : "light";
+  }, []);
   const [page, setPage] = useState<Page>("organizations");
   const [filters, setFilters] = useState(initialFilters);
   const [search, setSearch] = useState("");
@@ -340,6 +348,20 @@ function App() {
                 : "Statistics"}
           </div>
           <div className="top-actions">
+            <button
+              className="icon-btn theme-toggle"
+              type="button"
+              aria-label={`Switch to ${darkTheme ? "light" : "dark"} theme`}
+              title={`Switch to ${darkTheme ? "light" : "dark"} theme`}
+              onClick={() => {
+                const nextTheme = !darkTheme;
+                setDarkTheme(nextTheme);
+                window.localStorage.setItem("orbit-theme", nextTheme ? "dark" : "light");
+                document.documentElement.dataset.theme = nextTheme ? "dark" : "light";
+              }}
+            >
+              {darkTheme ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <span className="connected">
               <i />{" "}
               {list.isError
