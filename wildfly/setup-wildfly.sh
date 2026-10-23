@@ -21,7 +21,16 @@ fi
 WILDFLY_HOME="${WILDFLY_HOME:-$DIR/wildfly}"
 WILDFLY_VERSION="${WILDFLY_VERSION:-35.0.1.Final}"
 WILDFLY_ZIP="${WILDFLY_ZIP:-}"
+SOA_HTTP_PORT="${SOA_HTTP_PORT:-61810}"
 SOA_HTTPS_PORT="${SOA_HTTPS_PORT:-61811}"
+SOA_HTTPS_REDIRECT_PORT="${SOA_HTTPS_REDIRECT_PORT:-$SOA_HTTPS_PORT}"
+SOA_PUBLIC_HOST="${SOA_PUBLIC_HOST:-helios.cs.ifmo.ru}"
+SOA_PROXY_PORT="${SOA_PROXY_PORT:-}"
+SOA_BIND_ADDRESS="${SOA_BIND_ADDRESS:-0.0.0.0}"
+if [[ -n "$SOA_PROXY_PORT" ]]; then
+  SOA_BIND_ADDRESS=127.0.0.1
+  DIR="$DIR" bash "$DIR/setup-proxy.sh" check
+fi
 SOA_KEYSTORE_PASSWORD="${SOA_KEYSTORE_PASSWORD:-changeit}"
 SCHEMA="${SCHEMA:-s389491}"
 PGPASS_FILE="${PGPASS_FILE:-$HOME/.pgpass}"
@@ -106,12 +115,12 @@ PG_PORT="${SOA_DB_PORT:-${PG_PORT:-5432}}"
 PG_DB="${SOA_DB_NAME:-${PG_DB:-studs}}"
 export SOA_DB_USER SOA_DB_PASSWORD
 export SOA_JDBC_URL="${SOA_JDBC_URL:-jdbc:postgresql://$PG_HOST:$PG_PORT/$PG_DB?currentSchema=$SCHEMA}"
-export SOA_HTTPS_PORT SOA_KEYSTORE_PASSWORD
+export SOA_HTTP_PORT SOA_HTTPS_PORT SOA_HTTPS_REDIRECT_PORT SOA_PUBLIC_HOST SOA_KEYSTORE_PASSWORD
 export SOA_ORGANIZATION_URL="${SOA_ORGANIZATION_URL:-https://localhost:$SOA_HTTPS_PORT}"
 
 # Bootstrap once from the existing pgpass; later starts use only this private .env.
 if [[ ! -e "$DIR/.env" ]]; then
-  (umask 077; for name in SOA_DB_USER SOA_DB_PASSWORD SOA_JDBC_URL SOA_HTTPS_PORT SOA_KEYSTORE_PASSWORD SOA_ORGANIZATION_URL; do
+  (umask 077; for name in SOA_DB_USER SOA_DB_PASSWORD SOA_JDBC_URL SOA_HTTP_PORT SOA_HTTPS_PORT SOA_HTTPS_REDIRECT_PORT SOA_PUBLIC_HOST SOA_KEYSTORE_PASSWORD SOA_ORGANIZATION_URL; do
     printf '%s=%q\n' "$name" "${!name}"
   done) > "$DIR/.env"
 fi
@@ -166,8 +175,8 @@ fi
 
 # --- 6. Start -----------------------------------------------------------------------------
 mkdir -p "$DIR/logs"
-log "Starting WildFly on https://0.0.0.0:$SOA_HTTPS_PORT"
-nohup "$WILDFLY_HOME/bin/standalone.sh" -b 0.0.0.0 -Djboss.management.http.port="$SOA_MANAGEMENT_PORT" > "$DIR/logs/wildfly.log" 2>&1 < /dev/null &
+log "Starting WildFly on https://$SOA_BIND_ADDRESS:$SOA_HTTPS_PORT"
+nohup "$WILDFLY_HOME/bin/standalone.sh" -b "$SOA_BIND_ADDRESS" -Djboss.management.http.port="$SOA_MANAGEMENT_PORT" > "$DIR/logs/wildfly.log" 2>&1 < /dev/null &
 launcher=$!
 jvm=""
 for _ in $(seq 1 60); do
@@ -199,4 +208,13 @@ fi
 for endpoint in /organizations /orgdirectory/order/name/false /openapi/organizations /openapi/orgdirectory /ui/; do
   curl --fail --silent --show-error --insecure --max-time 30 "https://localhost:$SOA_HTTPS_PORT$endpoint" > /dev/null
 done
-log "WildFly is running; both APIs and UI passed HTTPS checks (pid $(cat "$DIR/wildfly.pid"))"
+if [[ -n "$SOA_PROXY_PORT" ]]; then
+  DIR="$DIR" bash "$DIR/setup-proxy.sh" start
+  curl --fail --silent --show-error --location --insecure --max-redirs 3 --max-time 30 \
+    "http://localhost:$SOA_PROXY_PORT/" > /dev/null
+else
+  curl --fail --silent --show-error --location --insecure --max-redirs 3 --max-time 30 \
+    --resolve "$SOA_PUBLIC_HOST:$SOA_HTTPS_REDIRECT_PORT:127.0.0.1" \
+    "http://localhost:$SOA_HTTP_PORT/" > /dev/null
+fi
+log "WildFly is running; APIs and UI passed HTTPS checks and HTTP redirect (pid $(cat "$DIR/wildfly.pid"))"

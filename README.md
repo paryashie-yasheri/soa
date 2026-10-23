@@ -150,8 +150,10 @@ small XML adapter, since these APIs exchange XML rather than JSON.
 - Organizations: `https://se.ifmo.ru:61811/organizations`
 - Directory: `https://se.ifmo.ru:61811/orgdirectory/order/name/false`
 
-The HTTPS certificate is self-signed. The application HTTP listener is removed;
-management listens only on localhost (port 61812).
+The HTTPS certificate is self-signed. On Helios, HAProxy accepts both protocols on
+public port 61811: plain HTTP receives a 308 redirect to HTTPS with the same host,
+port, path and query, while TLS passes through to WildFly on localhost:61813.
+Management remains on localhost:61812. The redirect handler is on localhost:61814.
 Both services currently share one WildFly instance; the lab specification's
 requirement for two separate instances is not implemented by this deployment.
 
@@ -198,6 +200,27 @@ ssh -N -L 61811:localhost:61811 helios
 # In another terminal:
 curl -fk https://localhost:61811/organizations
 ```
+
+The same tunnel also supports `http://localhost:61811/`: it redirects to
+`https://localhost:61811/`, then the application redirects `/` to `/ui/`.
+
+HAProxy is installed without sudo using `bash wildfly/install-haproxy.sh` (or
+`bash install-haproxy.sh` inside the Helios deployment bundle). Its binary lives
+at `~/.local/bin/haproxy`. To enable this setup, set these values in the private
+deployment `.env` and run `./setup-wildfly.sh`:
+
+```dotenv
+SOA_PROXY_PORT=61811
+SOA_PROXY_REDIRECT_PORT=61814
+SOA_HTTPS_PORT=61813
+SOA_HTTPS_REDIRECT_PORT=61811
+SOA_ORGANIZATION_URL=https://localhost:61813
+```
+
+The startup script validates the proxy configuration before restarting WildFly,
+binds WildFly to loopback, and starts or reloads HAProxy after the backend is ready.
+HAProxy keeps TLS encrypted through to WildFly and does not need a copy of its
+private key. Proxy configuration, PID and logs are under `~/soa-lab2/`.
 
 ## Local verification
 

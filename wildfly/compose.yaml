@@ -19,11 +19,14 @@ services:
     build:
       context: ..
       dockerfile: wildfly/Dockerfile
+      args:
+        SOA_HTTPS_REDIRECT_PORT: ${SOA_TEST_HTTPS_PORT:-62811}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
     ports:
+      - "127.0.0.1:${SOA_TEST_HTTP_PORT:-62810}:61810"
       - "127.0.0.1:${SOA_TEST_HTTPS_PORT:-62811}:61811"
 

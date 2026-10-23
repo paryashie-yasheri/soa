@@ -11,7 +11,10 @@ set -euo pipefail
 umask 077
 
 WILDFLY_HOME="${WILDFLY_HOME:?WILDFLY_HOME must point to the WildFly installation}"
+SOA_HTTP_PORT="${SOA_HTTP_PORT:-61810}"
 SOA_HTTPS_PORT="${SOA_HTTPS_PORT:-61811}"
+SOA_HTTPS_REDIRECT_PORT="${SOA_HTTPS_REDIRECT_PORT:-$SOA_HTTPS_PORT}"
+SOA_PUBLIC_HOST="${SOA_PUBLIC_HOST:-helios.cs.ifmo.ru}"
 SOA_KEYSTORE_PASSWORD="${SOA_KEYSTORE_PASSWORD:-changeit}"
 SOA_JDBC_URL="${SOA_JDBC_URL:?SOA_JDBC_URL is required}"
 SOA_DB_USER="${SOA_DB_USER:?SOA_DB_USER is required}"
@@ -33,8 +36,13 @@ embed-server --server-config=standalone.xml --std-out=echo
 /subsystem=ejb3/service=remote:remove()
 /subsystem=remoting/http-connector=http-remoting-connector:remove()
 
-# HTTPS only: drop the plaintext listener so HTTP cannot reach the applications.
+# Keep an HTTP listener only to redirect requests to the HTTPS socket.
+# Remove the stock listener name before adding our redirect-only listener.
 /subsystem=undertow/server=default-server/http-listener=default:remove()
+/socket-binding-group=standard-sockets/socket-binding=http:write-attribute(name=port, value=${SOA_HTTP_PORT})
+/subsystem=undertow/server=default-server/http-listener=http:add(socket-binding=http, redirect-socket=https)
+/subsystem=undertow/configuration=filter/rewrite=http-to-https:add(target="https://${SOA_PUBLIC_HOST}:${SOA_HTTPS_REDIRECT_PORT}%U%q", redirect=true)
+/subsystem=undertow/server=default-server/host=default-host/filter-ref=http-to-https:add(predicate="equals(%p, ${SOA_HTTP_PORT})")
 /socket-binding-group=standard-sockets/socket-binding=https:write-attribute(name=port, value=${SOA_HTTPS_PORT})
 
 # Elytron TLS material (self-signed server certificate plus its own trust store).
@@ -63,6 +71,22 @@ end-if
 if (outcome != success) of /subsystem=microprofile-openapi-smallrye:read-resource()
   /subsystem=microprofile-openapi-smallrye:add()
 end-if
+if (outcome == success) of /subsystem=undertow/server=default-server/http-listener=default:read-resource()
+  /subsystem=undertow/server=default-server/http-listener=default:remove()
+end-if
+/socket-binding-group=standard-sockets/socket-binding=http:write-attribute(name=port, value=${SOA_HTTP_PORT})
+if (outcome != success) of /subsystem=undertow/server=default-server/http-listener=http:read-resource()
+  /subsystem=undertow/server=default-server/http-listener=http:add(socket-binding=http, redirect-socket=https)
+end-if
+/subsystem=undertow/server=default-server/http-listener=http:write-attribute(name=redirect-socket, value=https)
+if (outcome == success) of /subsystem=undertow/server=default-server/host=default-host/filter-ref=http-to-https:read-resource()
+  /subsystem=undertow/server=default-server/host=default-host/filter-ref=http-to-https:remove()
+end-if
+if (outcome == success) of /subsystem=undertow/configuration=filter/rewrite=http-to-https:read-resource()
+  /subsystem=undertow/configuration=filter/rewrite=http-to-https:remove()
+end-if
+/subsystem=undertow/configuration=filter/rewrite=http-to-https:add(target="https://${SOA_PUBLIC_HOST}:${SOA_HTTPS_REDIRECT_PORT}%U%q", redirect=true)
+/subsystem=undertow/server=default-server/host=default-host/filter-ref=http-to-https:add(predicate="equals(%p, ${SOA_HTTP_PORT})")
 /socket-binding-group=standard-sockets/socket-binding=https:write-attribute(name=port, value=${SOA_HTTPS_PORT})
 /subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context, value=soaSsl)
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=connection-url, value="\${env.SOA_JDBC_URL}")

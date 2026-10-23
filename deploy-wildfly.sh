@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the WildFly deployment and installs it on helios:
 #   * the two JAX-RS applications as ROOT.war and orgdirectory.war
-#   * WildFly itself (downloaded on the host if missing) with an HTTPS-only listener
+#   * WildFly itself (downloaded on the host if missing) with an HTTP-to-HTTPS redirect
 #   * a PostgreSQL data source configured by soa-lab2/.env
 #   * the static React client at /ui/ and Swagger UI at /ui/docs/ as ui.war
 #
@@ -14,9 +14,12 @@ REMOTE_DIR="${REMOTE_DIR:-/home/studs/s389491/soa-lab2}"
 WILDFLY_VERSION="${WILDFLY_VERSION:-35.0.1.Final}"
 WILDFLY_HOME="${WILDFLY_HOME:-}"
 SOA_HTTPS_PORT="${SOA_HTTPS_PORT:-61811}"
+SOA_HTTP_PORT="${SOA_HTTP_PORT:-61810}"
+SOA_HTTPS_REDIRECT_PORT="${SOA_HTTPS_REDIRECT_PORT:-$SOA_HTTPS_PORT}"
 SOA_KEYSTORE_PASSWORD="${SOA_KEYSTORE_PASSWORD:-changeit}"
 SCHEMA="${SCHEMA:-s389491}"
-PUBLIC_HOST="${PUBLIC_HOST:-se.ifmo.ru}"
+PUBLIC_HOST="${PUBLIC_HOST:-helios.cs.ifmo.ru}"
+SOA_PUBLIC_HOST="${SOA_PUBLIC_HOST:-$PUBLIC_HOST}"
 POSTGRES_DRIVER_JAR="$ROOT/wildfly/postgresql-module/postgresql-42.7.5.jar"
 
 command -v bun >/dev/null 2>&1 || { echo 'Bun is required to build the frontend; install it before deploying' >&2; exit 1; }
@@ -56,18 +59,19 @@ scp "$ROOT/orgdirectory-service/build/libs/orgdirectory.war" "$HOST:$REMOTE_DIR/
 scp "$ROOT/build/libs/ui.war" "$HOST:$REMOTE_DIR/deployments/ui.war"
 scp "$ROOT/tls/server.p12" "$ROOT/tls/truststore.p12" "$HOST:$REMOTE_DIR/tls/"
 scp "$ROOT/wildfly/postgresql-module/module.xml" "$POSTGRES_DRIVER_JAR" "$HOST:$REMOTE_DIR/modules/org/postgresql/main/"
-scp "$ROOT/wildfly/configure-wildfly.sh" "$ROOT/wildfly/setup-wildfly.sh" "$ROOT/wildfly/.env.example" "$HOST:$REMOTE_DIR/"
+scp "$ROOT/wildfly/configure-wildfly.sh" "$ROOT/wildfly/setup-wildfly.sh" "$ROOT/wildfly/setup-proxy.sh" "$ROOT/wildfly/install-haproxy.sh" "$ROOT/wildfly/.env.example" "$HOST:$REMOTE_DIR/"
 
 scp "$ROOT/swagger/build.sh" "$HOST:$REMOTE_DIR/swagger/"
 scp "$ROOT/openapi/organization-service.yaml" "$ROOT/openapi/orgdirectory-service.yaml" "$HOST:$REMOTE_DIR/openapi/"
 
 echo "==> Installing and starting WildFly on $HOST"
-ssh "$HOST" "chmod +x '$REMOTE_DIR/configure-wildfly.sh' '$REMOTE_DIR/setup-wildfly.sh' && DIR='$REMOTE_DIR' WILDFLY_HOME='$WILDFLY_HOME' WILDFLY_VERSION='$WILDFLY_VERSION' SOA_HTTPS_PORT='$SOA_HTTPS_PORT' SOA_KEYSTORE_PASSWORD='$SOA_KEYSTORE_PASSWORD' SCHEMA='$SCHEMA' '$REMOTE_DIR/setup-wildfly.sh'"
+ssh "$HOST" "chmod +x '$REMOTE_DIR/configure-wildfly.sh' '$REMOTE_DIR/setup-wildfly.sh' && DIR='$REMOTE_DIR' WILDFLY_HOME='$WILDFLY_HOME' WILDFLY_VERSION='$WILDFLY_VERSION' SOA_HTTP_PORT='$SOA_HTTP_PORT' SOA_HTTPS_PORT='$SOA_HTTPS_PORT' SOA_HTTPS_REDIRECT_PORT='$SOA_HTTPS_REDIRECT_PORT' SOA_PUBLIC_HOST='$SOA_PUBLIC_HOST' SOA_KEYSTORE_PASSWORD='$SOA_KEYSTORE_PASSWORD' SCHEMA='$SCHEMA' '$REMOTE_DIR/setup-wildfly.sh'"
 
 cat <<SUMMARY
 
 Deployed.
   Frontend:      https://$PUBLIC_HOST:$SOA_HTTPS_PORT/ui/
+  HTTP redirect: http://$PUBLIC_HOST:$SOA_HTTP_PORT/ -> https://$PUBLIC_HOST:$SOA_HTTPS_PORT/
   Swagger UI:    https://$PUBLIC_HOST:$SOA_HTTPS_PORT/ui/docs/
   Organization: https://$PUBLIC_HOST:$SOA_HTTPS_PORT/organizations
   Directory:    https://$PUBLIC_HOST:$SOA_HTTPS_PORT/orgdirectory/order/name/false

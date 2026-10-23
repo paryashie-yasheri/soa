@@ -1,5 +1,6 @@
 FROM quay.io/wildfly/wildfly:35.0.1.Final-jdk21
 
+ARG SOA_HTTPS_REDIRECT_PORT=62811
 ENV JBOSS_HOME=/opt/jboss/wildfly
 ENV WILDFLY_HOME=/opt/jboss/wildfly
 # Runtime values used by the expressions in standalone.xml (local verification only).
@@ -7,6 +8,8 @@ ENV SOA_JDBC_URL="jdbc:postgresql://db:5432/soa?currentSchema=s389491" \
     SOA_DB_USER=soa \
     SOA_DB_PASSWORD=soa-local \
     SOA_KEYSTORE_PASSWORD=changeit \
+    SOA_PUBLIC_HOST=localhost \
+    SOA_HTTPS_REDIRECT_PORT=${SOA_HTTPS_REDIRECT_PORT} \
     SOA_ORGANIZATION_URL=https://localhost:61811
 
 # PostgreSQL driver installed as a JBoss module referenced by the data source.
@@ -26,6 +29,9 @@ COPY --chown=jboss:jboss tls/truststore.p12 ${WILDFLY_HOME}/standalone/configura
 COPY --chown=jboss:jboss wildfly/configure-wildfly.sh /tmp/configure-wildfly.sh
 RUN chmod +x /tmp/configure-wildfly.sh \
     && SOA_HTTPS_PORT=61811 \
+       SOA_HTTP_PORT=61810 \
+       SOA_HTTPS_REDIRECT_PORT=${SOA_HTTPS_REDIRECT_PORT} \
+       SOA_PUBLIC_HOST=localhost \
        SOA_KEYSTORE_PASSWORD=changeit \
        SOA_JDBC_URL="jdbc:postgresql://db:5432/soa?currentSchema=s389491" \
        SOA_DB_USER=soa \
@@ -37,4 +43,4 @@ RUN chmod +x /tmp/configure-wildfly.sh \
 # Make the server JVM trust the self-signed certificate for the directory service upstream calls.
 RUN echo 'JAVA_OPTS="$JAVA_OPTS -Djavax.net.ssl.trustStore=${JBOSS_HOME}/standalone/configuration/soa-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12"' >> ${JBOSS_HOME}/bin/standalone.conf
 
-EXPOSE 61811
+EXPOSE 61810 61811
