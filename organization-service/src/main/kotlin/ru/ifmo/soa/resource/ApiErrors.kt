@@ -10,6 +10,12 @@ import java.sql.SQLException
 import java.time.DateTimeException
 import org.xml.sax.SAXException
 
+private const val SQLSTATE_CONNECTION_EXCEPTION_CLASS = "08"
+private const val SQLSTATE_INSUFFICIENT_RESOURCES_CLASS = "53"
+private const val HIBERNATE_CONNECTION_EXCEPTION = "JDBCConnectionException"
+
+private val databaseShutdownSqlStates = setOf("57P01", "57P02", "57P03")
+
 internal fun errorResponse(code: Int, message: String): Response = Response.status(code)
     .type(MediaType.APPLICATION_XML)
     .entity(
@@ -27,13 +33,21 @@ internal fun organizationError(error: Exception): Response {
         return errorResponse(400, error.message ?: "Некорректный запрос")
     }
     val causes = generateSequence<Throwable>(error) { it.cause }.take(32).toList()
-    val unavailable = causes.any {
-        (it is SQLException && (it.sqlState?.startsWith("08") == true || it.sqlState?.startsWith("53") == true ||
-            it.sqlState in setOf("57P01", "57P02", "57P03"))) ||
-            it.javaClass.simpleName == "JDBCConnectionException"
-    }
+    val unavailable = causes.any { it.indicatesDatabaseUnavailable() }
     return if (unavailable) errorResponse(503, "База данных временно недоступна")
         else errorResponse(500, "Внутренняя ошибка сервиса")
+}
+
+private fun Throwable.indicatesDatabaseUnavailable(): Boolean = when (this) {
+    is SQLException -> hasUnavailableDatabaseSqlState()
+    else -> javaClass.simpleName == HIBERNATE_CONNECTION_EXCEPTION
+}
+
+private fun SQLException.hasUnavailableDatabaseSqlState(): Boolean {
+    val state = sqlState ?: return false
+    return state.startsWith(SQLSTATE_CONNECTION_EXCEPTION_CLASS) ||
+        state.startsWith(SQLSTATE_INSUFFICIENT_RESOURCES_CLASS) ||
+        state in databaseShutdownSqlStates
 }
 
 @Provider
