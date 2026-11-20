@@ -12,8 +12,9 @@ fi
 SOA_PROXY_PORT="${SOA_PROXY_PORT:?Set SOA_PROXY_PORT to enable the shared listener}"
 SOA_PROXY_REDIRECT_PORT="${SOA_PROXY_REDIRECT_PORT:-61814}"
 SOA_HTTPS_PORT="${SOA_HTTPS_PORT:-61813}"
+SOA_GATEWAY_PORT="${SOA_GATEWAY_PORT:-61815}"
 HAPROXY_BIN="${HAPROXY_BIN:-$HOME/.local/bin/haproxy}"
-for port in "$SOA_PROXY_PORT" "$SOA_PROXY_REDIRECT_PORT" "$SOA_HTTPS_PORT"; do
+for port in "$SOA_PROXY_PORT" "$SOA_PROXY_REDIRECT_PORT" "$SOA_HTTPS_PORT" "$SOA_GATEWAY_PORT"; do
   [[ "$port" =~ ^[0-9]+$ ]] && ((port > 1024 && port < 65536)) || {
     echo "Invalid proxy/backend port: $port" >&2; exit 1;
   }
@@ -54,8 +55,8 @@ backend http_redirect
 frontend redirect_handler
     bind 127.0.0.1:${SOA_PROXY_REDIRECT_PORT}
     mode http
-    # Keep Host (including its port), path and query for SSH tunnels as well.
-    http-request redirect scheme https code 308
+    # Preserve the requested hostname, path and query while selecting the gateway.
+    http-request redirect location https://%[req.hdr(host),field(1,:)]:${SOA_GATEWAY_PORT}%[url] code 308
 CFG
 
 "$HAPROXY_BIN" -c -f "$config"

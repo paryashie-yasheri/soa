@@ -43,6 +43,13 @@ if [[ "$REPLICA_ONLY" == true ]]; then first_port=61816; instances=(2); fi
 for instance in "${instances[@]}"; do
   port=$((first_port + instance - 1))
   SERVER_ADDRESS=127.0.0.1 SERVER_PORT="$port" CONSUL_HTTP_ADDR="$CONSUL_HTTP_ADDR" \
+    SERVER_TOMCAT_ACCESSLOG_ENABLED=true \
+    SERVER_TOMCAT_ACCESSLOG_DIRECTORY="$DIR/logs" \
+    SERVER_TOMCAT_ACCESSLOG_PREFIX="access-orgdirectory$instance" \
+    SERVER_TOMCAT_ACCESSLOG_SUFFIX=.log \
+    SERVER_TOMCAT_ACCESSLOG_ROTATABLE=false \
+    SERVER_TOMCAT_ACCESSLOG_BUFFERED=false \
+    SERVER_TOMCAT_ACCESSLOG_PATTERN='%t %a "%r" %s %b %D' \
     ORGANIZATION_SERVICE_URL="$ORGANIZATION_SERVICE_URL" \
     nohup "$JAVA_BIN" -Xms32m "-Xmx${SOA_CALLER_MAX_HEAP:-256m}" -XX:CompressedClassSpaceSize=32m -XX:ReservedCodeCacheSize=48m -XX:ActiveProcessorCount=2 -XX:+UseSerialGC -Djavax.net.ssl.trustStore="$TRUSTSTORE" \
       -Djavax.net.ssl.trustStorePassword="${SOA_KEYSTORE_PASSWORD:-changeit}" \
@@ -52,7 +59,8 @@ for instance in "${instances[@]}"; do
 done
 
 if [[ "$REPLICA_ONLY" == true ]]; then
-  curl -fsS --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:61817/order/name/false >/dev/null
+  echo "Waiting for the second replica on 61817..."
+  curl -fsS --max-time 5 --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:61817/health >/dev/null
   echo "Second replica is ready on 61817"
   exit 0
 fi
@@ -64,7 +72,8 @@ nohup "$HAPROXY_BIN" -db -f "$DIR/run/haproxy.cfg" \
 echo "$!" > "$DIR/run/haproxy.pid"
 
 for port in "$first_port" "$((first_port+1))"; do
-  curl -fsS --retry 30 --retry-connrefused --retry-delay 1 "http://127.0.0.1:$port/order/name/false" >/dev/null
+  echo "Waiting for replica health on $port..."
+  curl -fsS --max-time 5 --retry 30 --retry-connrefused --retry-delay 1 "http://127.0.0.1:$port/health" >/dev/null
 done
 curl -fkSs --retry 10 --retry-delay 1 https://localhost:61815/orgdirectory/order/name/false >/dev/null
 echo "HAProxy exposes https://localhost:61815/orgdirectory/..."
