@@ -36,7 +36,7 @@
 
 В реализации вызываемый Organization Service упакован в EAR из двух модулей: `organization-web.war` принимает HTTP-запросы и предоставляет JAX-RS ресурсы, а `organization-ejb.jar` содержит модели, репозитории и бизнес-логику. Веб-модуль обращается к бизнес-компонентам через Remote-интерфейс `OrganizationRemote`.
 
-Вызывающий OrgDirectory Service собран как Spring Boot-приложение. Два его процесса обслуживают запросы за HAProxy. HAProxy направляет `/orgdirectory/...` к экземплярам Spring Boot по алгоритму round-robin, а остальные пути, включая `/organizations` и `/ui/`, передаёт WildFly. Spring-сервис находит Organization Service через Consul и вызывает его REST API по HTTPS.
+Вызывающий OrgDirectory Service собран как Spring Boot-приложение. В локальном Compose-стенде оба его экземпляра работают рядом с WildFly и Consul; в удалённом развёртывании `deploy-wildfly.sh` размещает WildFly, первый экземпляр вызывающего сервиса и HAProxy на основном узле, а второй экземпляр отправляет на `SECOND_HOST` через `deploy-second-caller.sh`. Публичная точка входа — HAProxy. Он направляет `/orgdirectory/...` к экземплярам Spring Boot по алгоритму round-robin, а остальные пути, включая `/organizations` и `/ui/`, передаёт WildFly. Spring-сервис находит Organization Service через Consul и вызывает его REST API по HTTPS.
 
 #figure(
   table(
@@ -53,7 +53,9 @@
   caption: [Компоненты и связи локального стенда ЛР3],
 )
 
-В локальном стенде внешний HTTPS-порт Organization Service равен `62811`, а HTTPS-порт HAProxy — `62812`. Spring Boot экземпляры доступны на портах `61813` и `61814`; Consul UI опубликован на `18500`, PostgreSQL — на `15432`. В развёртывании на Helios HAProxy принимает каталог на порту `61815`, а две копии вызывающего сервиса слушают локальные порты `61813` и `61814`.
+В локальном Compose-стенде HTTPS-порт Organization Service равен `62811`, а входной порт HAProxy — `62812`. Spring Boot экземпляры опубликованы на портах `61813` и `61814`; Consul UI доступен на `18500`, PostgreSQL — на `15432`.
+
+При удалённом развёртывании публичный вход HAProxy — `https://helios.cs.ifmo.ru:61815/`; WildFly обслуживает backend на `61811`, первый экземпляр Spring Boot запускается на основном узле на `61816`, второй — на `SECOND_HOST` на `61817`. Consul запускается на основном узле как локальный агент на `127.0.0.1:61818`. Порт `61815` служит общей точкой входа, а не портом WildFly. UI и API организаций через неё проксируются в WildFly; запросы каталога идут к Spring Boot.
 
 == Разделение веб-слоя и EJB
 
@@ -97,13 +99,15 @@ Consul отвечает за каталог адресов сервисов. Б�
 
 == Балансировка HAProxy
 
-HAProxy принимает HTTPS-запросы на входном порту. Если путь начинается с `/orgdirectory`, балансировщик удаляет этот префикс и выбирает один из двух Spring Boot экземпляров по round-robin. Поэтому публичный путь, описанный контрактом, остаётся `/orgdirectory/order/...`, хотя приложение Spring Boot обрабатывает внутренний путь `/order/...`.
+HAProxy принимает HTTPS-запросы на `61815`. Если путь начинается с `/orgdirectory`, балансировщик удаляет этот префикс и выбирает один из двух Spring Boot экземпляров по round-robin. В локальной Compose-конфигурации проверка backend обращается к `GET /health`; конфигурация на Helios проверяет `GET /order/name/false`. Скрипт запуска дополнительно ждёт успешного `GET /health` на каждой реплике и проверяет публичный запрос через gateway. Поэтому публичный путь, описанный контрактом, остаётся `/orgdirectory/order/...`, хотя приложение Spring Boot обрабатывает внутренний путь `/order/...`.
 
-Запросы к остальным путям HAProxy передаёт в WildFly: так сохраняется единая точка входа для Organization Service, UI и документации. В локальном Compose-стенде WildFly и Spring Boot находятся в отдельных контейнерах; на Helios скрипт `run-lab3-caller.sh` запускает два JAR-процесса и HAProxy.
+Запросы к остальным путям HAProxy передаёт в WildFly: так сохраняется единая точка входа для Organization Service, UI и документации. В Compose backend-адреса двух экземпляров — `orgdirectory1:8080` и `orgdirectory2:8080`. На удалённых узлах `run-lab3-caller.sh` запускает первый JAR на основном хосте и локальный HAProxy; `deploy-second-caller.sh` запускает второй JAR на `SECOND_HOST`.
+
+В конфигурации удалённого HAProxy backend-адреса формируются как `127.0.0.1:61816` и `127.0.0.1:61817`, тогда как второй экземпляр запускается на `SECOND_HOST`. Кроме того, скрипт передаёт второй реплике адреса Consul и Organization Service через `127.0.0.1`, которые на отдельном узле указывают на сам этот узел. Скрипты деплоя не создают SSH-туннель и не задают удалённые адреса для этих соединений. Поэтому для работы второй реплики с отдельного хоста требуется настроить сетевую доступность gateway-узла на портах `61817` и `61818`, а также Organization Service на `61811`, либо изменить передаваемые адреса и конфигурацию HAProxy. Это ограничение необходимо учитывать при проверке удалённого стенда.
 
 = Совместимость API и защищённое соединение
 
-Контракты предыдущей лабораторной работы сохранены: URL, HTTP-методы, XML-представление данных и ответы API доступны через публичную точку входа. Основные пути — `/organizations`, `/organizations/{id}`, `/orgdirectory/filter/employees/{min}/{max}` и `/orgdirectory/order/{field}/{desc}`. Статический интерфейс остаётся доступен по `/ui/`; HAProxy направляет UI и другие пути Organization Service в WildFly.
+Контракты предыдущей лабораторной работы сохранены: URL, HTTP-методы, XML-представление данных и ответы API доступны через публичную точку входа `https://helios.cs.ifmo.ru:61815/`. Основные пути — `/organizations`, `/organizations/{id}`, `/orgdirectory/filter/employees/{min}/{max}` и `/orgdirectory/order/{field}/{desc}`. Статический интерфейс доступен по `/ui/`; HAProxy направляет UI и пути Organization Service в WildFly. UI использует относительные адреса API, поэтому запросы из загруженной через HAProxy страницы проходят через тот же gateway.
 
 Для ресурса `/organizations` сохранены операции `GET` и `POST`; для `/organizations/{id}` — `GET`, `PUT` и `DELETE`. Для сотрудников доступны прежние `GET`/`POST` на `/organizations/{id}/employees` и `DELETE` на `/organizations/{id}/employees/{employeeId}`. Каталог сохраняет обе операции `GET`, а статистические ресурсы продолжают отвечать в XML.
 
@@ -111,7 +115,7 @@ HAProxy принимает HTTPS-запросы на входном порту. 
 
 = Сборка и запуск
 
-Основные команды проекта:
+Основные команды локальной сборки и стенда:
 
 ```bash
 ./gradlew lab3Bundle
@@ -121,13 +125,15 @@ HAProxy принимает HTTPS-запросы на входном порту. 
 
 `lab3Bundle` собирает EAR вызываемого сервиса, совместимый WAR, Spring Boot JAR и UI WAR. `lab3StackUp` генерирует локальные TLS-файлы, подготавливает JDBC-драйвер и запускает Compose-стенд с WildFly, Consul, PostgreSQL, двумя Spring Boot экземплярами и HAProxy. `lab3StackDown` останавливает стенд и удаляет локальный том PostgreSQL.
 
-В локальном стенде Organization Service доступен напрямую по `https://localhost:62811/organizations`, а клиентский вход HAProxy — по `https://localhost:62812/`. Каталог вызывается по адресу `https://localhost:62812/orgdirectory/order/name/false`. Документация Swagger UI доступна через `/ui/docs/`.
+Для удалённого развёртывания используется `./deploy-wildfly.sh`. Скрипт собирает EAR, Spring Boot JAR и UI WAR, копирует их на `HOST`, запускает WildFly и Consul, развёртывает второй Spring Boot экземпляр на `SECOND_HOST`, а затем запускает первый экземпляр и HAProxy. По умолчанию публичный gateway — порт `61815`, прямой HTTPS backend WildFly — `61811`. В отличие от Compose, удалённый стенд распределён между двумя SSH-узлами.
+
+В локальном стенде Organization Service доступен напрямую по `https://localhost:62811/organizations`, а клиентский вход HAProxy — по `https://localhost:62812/`. Каталог вызывается по адресу `https://localhost:62812/orgdirectory/order/name/false`. Документация Swagger UI доступна через `/ui/docs/`. В удалённом стенде UI, Swagger UI и оба API используют gateway `https://helios.cs.ifmo.ru:61815/`; прямой адрес WildFly — `https://helios.cs.ifmo.ru:61811/organizations`.
 
 = Проверки
 
 В проекте предусмотрены модульные проверки бизнес-логики организаций и сотрудников в `organization-ejb`, проверки XML-кодека в `organization-web`, а также тесты прежнего каталога и его HTTP-клиента в модуле совместимости. Интеграционный класс `WildFlyStackE2ETest` проверяет CRUD, фильтрацию, сортировку, пагинацию, сотрудников, статистику, ошибки валидации, XML, Swagger UI и отказ plaintext HTTP для совместимого стека Lab 2.
 
-Команда `lab3StackUp` дополнительно ждёт прохождения health checks WildFly, Consul, PostgreSQL и обоих экземпляров Spring Boot. Эти проверки подтверждают запуск контейнеров. Текущий E2E-класс обращается к совместимому каталогу на порту WildFly и не проверяет чередование ответов через HAProxy на порту `62812`; результат запуска именно полного Lab 3 стека поэтому следует отличать от результата старого E2E-набора.
+Команда `lab3StackUp` дополнительно ждёт прохождения health checks WildFly, Consul, PostgreSQL и обоих экземпляров Spring Boot. Удалённый `run-lab3-caller.sh` проверяет `/health` на каждой копии и затем делает запрос через `https://localhost:61815`. Эти проверки подтверждают готовность процессов и доступность gateway на момент запуска. Текущий E2E-класс обращается к совместимому каталогу на порту WildFly и не проверяет чередование ответов через HAProxy на порту `62812`; результат запуска именно полного Lab 3 стека поэтому следует отличать от результата старого E2E-набора.
 
 = Результат
 
