@@ -62,10 +62,10 @@ if ! consul_ready 2>/dev/null; then
       server = 61819
       serf_lan = 61820
       serf_wan = 61821
-      dns = -1
+      dns = 61822
       grpc = -1
       grpc_tls = -1
-    }'  -bind=127.0.0.1 -client=127.0.0.1 \
+    } dns_config { only_passing = true }'  -bind=127.0.0.1 -client=127.0.0.1 \
     >"$DIR/logs/consul.log" 2>&1 </dev/null &
   consul_pid=$!
   for _ in $(seq 1 30); do

@@ -242,3 +242,35 @@ The local test database is separate from Helios.
 Собрать артефакты можно командой `./gradlew lab3Bundle`. Локальный стенд запускается командой `./gradlew lab3StackUp`, останавливается командой `./gradlew lab3StackDown`. В `wildfly/compose.yaml` входят WildFly, Consul, две Spring Boot копии и HAProxy. Доступны Organization Service на `https://localhost:62811`, API каталога через балансировщик на `https://localhost:62812/orgdirectory/...`, экземпляры Spring Boot на `http://localhost:61813` и `http://localhost:61814`, а Consul UI — на `http://localhost:18500/ui/`. Самоподписанный сертификат пробрасывается только локально.
 
 Для развёртывания на Helios `deploy-wildfly.sh` упаковывает EAR и Spring Boot JAR и запускает две копии за HAProxy. На Helios должны быть установлены и запущены Consul Agent на `127.0.0.1:8500` и `haproxy`; адрес, порты, Consul URL и размер пула можно переопределить переменными окружения перед запуском. Конфигурация HAProxy находится в `haproxy/helios.cfg`.
+
+### Helios: Consul and HAProxy discovery
+
+The two Spring callers run under separate accounts: port 61816 under
+`helios` (s389491), and port 61817 under `helios2` (s408614).
+Each caller registers as `soa-orgdirectory` after Spring is ready and
+deregisters during graceful shutdown. Consul checks each caller's HTTP
+`/health` every five seconds. A crashed instance remains registered but
+is excluded from DNS once its check becomes critical.
+
+The private Consul agent exposes its DNS interface on loopback port 61822
+with `only_passing=true`. HAProxy resolves the SRV name
+`_soa-orgdirectory._tcp.service.consul` through that interface and fills
+up to ten backend slots dynamically. SRV responses supply both addresses
+and ports, including multiple callers on the same IP. HAProxy distributes
+traffic across discovered instances using round-robin. Updating the
+registry changes the backend pool without restarting HAProxy.
+
+The full deployment entry point is `./deploy-wildfly.sh`. It starts the
+primary infrastructure, deploys the caller to the second account, and
+starts the primary caller and gateway. `SECOND_HOST` and `SECOND_DIR`
+override the second account's SSH alias and deployment directory.
+
+Health endpoints report application availability and do not query PostgreSQL.
+Consul DNS changes are asynchronous and include health-check and DNS
+refresh delays. With no passing directory instances, the gateway returns 503.
+
+## Дополнительное задание от преподавателя
+
+- OrgDirectory должен выполнять вычислительно затратную (CPU-heavy) работу, например формирование отчётов.
+- Каждый экземпляр OrgDirectory должен использовать S3-хранилище для хранения объектов, в том числе результатов формирования отчётов.
+- Каждый экземпляр OrgDirectory должен уметь получать сохранённые объекты из S3 и отдавать их клиентам.

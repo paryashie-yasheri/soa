@@ -27,6 +27,8 @@ class DirectoryService(private val repository: OrganizationApiRepository) {
 
     private inline fun <T> guarded(block: () -> T): T = try {
         block()
+    } catch (e: DirectoryFault) {
+        throw e
     } catch (e: DirectoryTimeout) {
         throw DirectoryFault(504, "Истекло время ожидания ответа от Organization Service")
     } catch (e: Exception) {

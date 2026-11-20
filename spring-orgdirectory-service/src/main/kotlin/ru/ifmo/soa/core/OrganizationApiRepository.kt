@@ -96,23 +96,29 @@ class OrganizationApiRepository {
     private fun encode(value: String): String = java.net.URLEncoder.encode(value, Charsets.UTF_8)
 
     private fun resolveOrganizationService(): String {
-        return try {
-            val request = HttpRequest.newBuilder(URI.create(consulUrl.trimEnd('/') + "/v1/catalog/service/soa-organizations"))
-                .timeout(Duration.ofSeconds(2)).GET().build()
+        val entries = try {
+            val request = HttpRequest.newBuilder(
+                URI.create(consulUrl.trimEnd('/') + "/v1/health/service/soa-organizations?passing=true")
+            ).timeout(Duration.ofSeconds(2)).GET().build()
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() !in 200..299) fallbackBase else {
-                val entries = json.readTree(response.body())
-                if (!entries.isArray || entries.size() == 0) fallbackBase else {
-                    val entry = entries[0]
-                    val address = entry.path("ServiceAddress").asText().ifBlank { entry.path("Address").asText() }
-                    val port = entry.path("ServicePort").asInt()
-                    if (address.isBlank() || port !in 1..65535) fallbackBase else "https://$address:$port"
-                }
-            }
+            if (response.statusCode() !in 200..299) return fallbackBase
+            json.readTree(response.body())
         } catch (_: Exception) {
-            fallbackBase
+            return fallbackBase
         }
+        if (!entries.isArray) throw DirectoryFault(503, "Некорректный ответ Consul")
+        val endpoints = entries.mapNotNull { entry ->
+            val service = entry.path("Service")
+            val address = service.path("Address").asText()
+                .ifBlank { entry.path("Node").path("Address").asText() }
+            val port = service.path("Port").asInt()
+            if (address.isBlank() || port !in 1..65535) null
+            else "https://$address:$port"
+        }
+        return endpoints.randomOrNull()
+            ?: throw DirectoryFault(503, "Нет доступных экземпляров Organization Service")
     }
+
 }
 
 class DirectoryTimeout : RuntimeException()

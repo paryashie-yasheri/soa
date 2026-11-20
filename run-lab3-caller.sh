@@ -42,7 +42,7 @@ if [[ "$SECOND_REPLICA_EXTERNAL" == true ]]; then instances=(1); fi
 if [[ "$REPLICA_ONLY" == true ]]; then first_port=61816; instances=(2); fi
 for instance in "${instances[@]}"; do
   port=$((first_port + instance - 1))
-  SERVER_ADDRESS=127.0.0.1 SERVER_PORT="$port" CONSUL_HTTP_ADDR="$CONSUL_HTTP_ADDR" \
+  CONSUL_REGISTRATION_ENABLED=true SERVER_ADDRESS=127.0.0.1 SERVER_PORT="$port" CONSUL_HTTP_ADDR="$CONSUL_HTTP_ADDR" \
     SERVER_TOMCAT_ACCESSLOG_ENABLED=true \
     SERVER_TOMCAT_ACCESSLOG_DIRECTORY="$DIR/logs" \
     SERVER_TOMCAT_ACCESSLOG_PREFIX="access-orgdirectory$instance" \
