@@ -34,8 +34,20 @@ CLI_JAVA_OPTS="${SOA_CLI_JAVA_OPTS:--Xms64m -Xmx512m}"
 WORK="$(mktemp -d "$WILDFLY_HOME/standalone/configuration/soa-cli.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
+cat > "$WORK/remoting.cli" <<'CLI_EOF'
+if (outcome == success) of /subsystem=remoting/http-connector=http-remoting-connector:read-resource()
+  /subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref, value=https)
+else
+  /subsystem=remoting/http-connector=http-remoting-connector:add(connector-ref=https,sasl-authentication-factory=application-sasl-authentication)
+end-if
+if (outcome != success) of /subsystem=ejb3/service=remote:read-resource()
+  /subsystem=ejb3/service=remote:add(connectors=[http-remoting-connector],thread-pool-name=default)
+end-if
+CLI_EOF
+
 cat > "$WORK/create.cli" <<CLI_EOF
 embed-server --server-config=standalone.xml --std-out=echo
+$(cat "$WORK/remoting.cli")
 
 # Keep the remote EJB view used by the JAX-RS WAR, but move it off the plaintext listener.
 
@@ -58,7 +70,6 @@ embed-server --server-config=standalone.xml --std-out=echo
 /subsystem=elytron/trust-manager=soaTrustManager:add(key-store=soaTruststore)
 /subsystem=elytron/server-ssl-context=soaSsl:add(key-manager=soaKeyManager, trust-manager=soaTrustManager, protocols=["TLSv1.2","TLSv1.3"])
 /subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context, value=soaSsl)
-/subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref, value=https)
 
 # PostgreSQL driver and the shared schema data source.
 /subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql, driver-module-name=org.postgresql, driver-class-name=org.postgresql.Driver)
@@ -75,6 +86,7 @@ CLI_EOF
 
 cat > "$WORK/update.cli" <<CLI_EOF
 embed-server --server-config=standalone.xml --std-out=echo
+$(cat "$WORK/remoting.cli")
 if (outcome != success) of /extension=org.wildfly.extension.microprofile.openapi-smallrye:read-resource()
   /extension=org.wildfly.extension.microprofile.openapi-smallrye:add()
 end-if
@@ -99,7 +111,6 @@ end-if
 /subsystem=undertow/server=default-server/host=default-host/filter-ref=http-to-https:add(predicate="equals(%p, ${SOA_HTTP_PORT})")
 /socket-binding-group=standard-sockets/socket-binding=https:write-attribute(name=port, value=${SOA_HTTPS_PORT})
 /subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context, value=soaSsl)
-/subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref, value=https)
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=connection-url, value="\${env.SOA_JDBC_URL}")
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=user-name, value="\${env.SOA_DB_USER}")
 /subsystem=datasources/data-source=SoaDS:write-attribute(name=password, value="\${env.SOA_DB_PASSWORD}")
@@ -109,9 +120,21 @@ if (outcome != success) of /subsystem=ejb3/strict-max-bean-instance-pool=soa-sta
 else
   /subsystem=ejb3/strict-max-bean-instance-pool=soa-stateless-pool:write-attribute(name=max-pool-size, value=${SOA_EJB_POOL_SIZE})
 end-if
-/system-property=soa.consul.url:write-attribute(name=value, value="\${env.SOA_CONSUL_URL}")
-/system-property=soa.consul.service.address:write-attribute(name=value, value="\${env.SOA_CONSUL_SERVICE_ADDRESS}")
-/system-property=soa.consul.service.port:write-attribute(name=value, value="\${env.SOA_CONSUL_SERVICE_PORT}")
+if (outcome != success) of /system-property=soa.consul.url:read-resource()
+  /system-property=soa.consul.url:add(value="\${env.SOA_CONSUL_URL}")
+else
+  /system-property=soa.consul.url:write-attribute(name=value, value="\${env.SOA_CONSUL_URL}")
+end-if
+if (outcome != success) of /system-property=soa.consul.service.address:read-resource()
+  /system-property=soa.consul.service.address:add(value="\${env.SOA_CONSUL_SERVICE_ADDRESS}")
+else
+  /system-property=soa.consul.service.address:write-attribute(name=value, value="\${env.SOA_CONSUL_SERVICE_ADDRESS}")
+end-if
+if (outcome != success) of /system-property=soa.consul.service.port:read-resource()
+  /system-property=soa.consul.service.port:add(value="\${env.SOA_CONSUL_SERVICE_PORT}")
+else
+  /system-property=soa.consul.service.port:write-attribute(name=value, value="\${env.SOA_CONSUL_SERVICE_PORT}")
+end-if
 stop-embedded-server
 CLI_EOF
 

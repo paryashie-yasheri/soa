@@ -41,6 +41,44 @@ PGPASS_FILE="${PGPASS_FILE:-$HOME/.pgpass}"
 
 log() { printf '==> %s\n' "$*"; }
 
+# An existing agent takes precedence. For the default loopback endpoint,
+# start a private lab agent when the host has the Consul binary installed.
+consul_ready() {
+  curl -fsS --max-time 3 "${SOA_CONSUL_URL%/}/v1/status/leader" | grep -q ':[0-9]'
+}
+if ! consul_ready 2>/dev/null; then
+  if [[ "${SOA_CONSUL_URL%/}" != http://127.0.0.1:8500 && "${SOA_CONSUL_URL%/}" != http://127.0.0.1:61818 ]]; then
+    echo "Configured Consul endpoint is unavailable; check SOA_CONSUL_URL in $DIR/.env" >&2
+    exit 1
+  fi
+  consul_bin="${CONSUL_BIN:-$(command -v consul || true)}"
+  consul_bin="${consul_bin:-$HOME/.local/bin/consul}"
+  [[ -x "$consul_bin" ]] || { echo "Install consul at $HOME/.local/bin/consul or set SOA_CONSUL_URL in $DIR/.env to a running agent." >&2; exit 1; }
+  mkdir -p "$DIR/logs"
+  SOA_CONSUL_URL=http://127.0.0.1:61818
+  if ! consul_ready 2>/dev/null; then
+  log "Starting a loopback Consul agent for Lab 3"
+  GOMAXPROCS=2 nohup "$consul_bin" agent -dev -node=soa-lab3 -hcl='ports { http = 61818
+      server = 61819
+      serf_lan = 61820
+      serf_wan = 61821
+      dns = -1
+      grpc = -1
+      grpc_tls = -1
+    }'  -bind=127.0.0.1 -client=127.0.0.1 \
+    >"$DIR/logs/consul.log" 2>&1 </dev/null &
+  consul_pid=$!
+  for _ in $(seq 1 30); do
+    consul_ready 2>/dev/null && break
+    kill -0 "$consul_pid" 2>/dev/null || break
+    sleep 1
+  done
+  fi
+  consul_ready || { echo "Consul failed to become ready; see $DIR/logs/consul.log" >&2; exit 1; }
+fi
+
+printf '%s\n' "$SOA_CONSUL_URL" > "$DIR/consul-url"
+
 # --- 1. WildFly itself -------------------------------------------------------------------
 if [[ ! -x "$WILDFLY_HOME/bin/standalone.sh" ]]; then
   log "Installing WildFly $WILDFLY_VERSION into $WILDFLY_HOME"
@@ -155,6 +193,13 @@ log "Installing PostgreSQL driver module"
 mkdir -p "$WILDFLY_HOME/modules/org/postgresql/main"
 cp "$DIR/modules/org/postgresql/main/"* "$WILDFLY_HOME/modules/org/postgresql/main/"
 
+# Preserve the previous scanner deployments outside its scan directory.
+mkdir -p "$DIR/lab2-backup"
+for legacy in ROOT.war orgdirectory.war; do
+  for file in "$WILDFLY_HOME/standalone/deployments/$legacy" "$WILDFLY_HOME/standalone/deployments/$legacy".*; do
+    if [[ -f "$file" ]]; then mv "$file" "$DIR/lab2-backup/"; fi
+  done
+done
 log "Deploying the organization EAR"
 mkdir -p "$WILDFLY_HOME/standalone/deployments"
 cp "$DIR/deployments/organization-service.ear" "$DIR/deployments/ui.war" "$WILDFLY_HOME/standalone/deployments/"
@@ -170,18 +215,23 @@ install -m 600 "$DIR/tls/truststore.p12" "$WILDFLY_HOME/standalone/configuration
 log "Applying WildFly configuration"
 WILDFLY_HOME="$WILDFLY_HOME" "$DIR/configure-wildfly.sh"
 
+# Migrate the old deployment's fixed 1 GiB heap to the runtime options below.
+if grep -q 'soa-truststore.p12' "$WILDFLY_HOME/bin/standalone.conf"; then
+  sed -i.bak '/soa-truststore.p12/s/-Xms128m -Xmx1g //g' "$WILDFLY_HOME/bin/standalone.conf"
+fi
 if ! grep -q 'soa-truststore.p12' "$WILDFLY_HOME/bin/standalone.conf"; then
   log "Configuring the server JVM heap and trust store"
   # An explicit -Xmx is required because the default (a quarter of physical RAM) can exceed the
   # per-account memory limit on shared hosts such as helios.
   printf '\nJAVA_OPTS="$JAVA_OPTS %s -Djavax.net.ssl.trustStore=%s/standalone/configuration/soa-truststore.p12 -Djavax.net.ssl.trustStorePassword=%s -Djavax.net.ssl.trustStoreType=PKCS12"\n' \
-    "${SOA_SERVER_JAVA_OPTS:--Xms128m -Xmx1g}" "$WILDFLY_HOME" "$SOA_KEYSTORE_PASSWORD" >> "$WILDFLY_HOME/bin/standalone.conf"
+    "" "$WILDFLY_HOME" "$SOA_KEYSTORE_PASSWORD" >> "$WILDFLY_HOME/bin/standalone.conf"
 fi
 
 # --- 6. Start -----------------------------------------------------------------------------
 mkdir -p "$DIR/logs"
 log "Starting WildFly on https://$SOA_BIND_ADDRESS:$SOA_HTTPS_PORT"
-nohup "$WILDFLY_HOME/bin/standalone.sh" -b "$SOA_BIND_ADDRESS" -Djboss.management.http.port="$SOA_MANAGEMENT_PORT" > "$DIR/logs/wildfly.log" 2>&1 < /dev/null &
+JAVA_OPTS="${SOA_SERVER_JAVA_OPTS:--Xms64m -Xmx384m -XX:ActiveProcessorCount=2 -XX:+UseSerialGC -XX:CompressedClassSpaceSize=64m -XX:ReservedCodeCacheSize=64m}" \
+  nohup "$WILDFLY_HOME/bin/standalone.sh" -b "$SOA_BIND_ADDRESS" -Djboss.management.http.port="$SOA_MANAGEMENT_PORT" > "$DIR/logs/wildfly.log" 2>&1 < /dev/null &
 launcher=$!
 jvm=""
 for _ in $(seq 1 60); do

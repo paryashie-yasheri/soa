@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install a private HAProxy binary; TLS remains terminated by WildFly.
+# Build the private HAProxy with TLS for the Lab 3 gateway.
 set -euo pipefail
 version=3.4.7
 prefix="${SOA_PROXY_PREFIX:-$HOME/.local}"
@@ -14,6 +14,11 @@ curl --fail --location --output "haproxy-$version.tar.gz" \
   "https://www.haproxy.org/download/3.4/src/haproxy-$version.tar.gz"
 tar -xzf "haproxy-$version.tar.gz"
 cd "haproxy-$version"
-"$builder" -j2 TARGET="$target"
-install -m 755 haproxy "$prefix/bin/haproxy"
+"$builder" clean
+"$builder" -j2 TARGET="$target" USE_OPENSSL=1
+./haproxy -vv | grep -F ' +SSL ' >/dev/null
+staged=$(mktemp "$prefix/bin/haproxy.XXXXXX")
+trap 'rm -f "$staged"' EXIT
+install -m 755 haproxy "$staged"
+mv -f "$staged" "$prefix/bin/haproxy"
 "$prefix/bin/haproxy" -v
