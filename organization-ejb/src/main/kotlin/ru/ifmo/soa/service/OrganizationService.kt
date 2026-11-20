@@ -16,33 +16,41 @@ class OrganizationService : OrganizationRemote {
     private lateinit var repository: OrganizationRepository
 
     @Transactional
-    override fun list(filter: OrganizationFilter, sortBy: List<String>, descending: Boolean, page: Int, size: Int): OrganizationPage {
+    override fun list(
+        filter: OrganizationFilter,
+        sortBy: List<String>,
+        descending: Boolean,
+        page: Int,
+        size: Int,
+    ): OrganizationPage {
         if (page < 1) throw ServiceFault(400, "page должен быть не меньше 1")
         if (size !in 1..100) throw ServiceFault(400, "size должен быть от 1 до 100")
         val allowed = setOf(
             "id", "name", "coordinates.x", "coordinates.y", "creationDate",
-            "annualTurnover", "fullName", "type", "postalAddress.street"
+            "annualTurnover", "fullName", "type", "postalAddress.street",
         )
         if (sortBy.any { it !in allowed }) throw ServiceFault(400, "Недопустимое поле сортировки")
         var rows = repository.allModels().filter { o ->
             (filter.id == null || o.id == filter.id) && (filter.name == null || o.name == filter.name) &&
-                (filter.coordinatesX == null || o.coordinates.x == filter.coordinatesX) &&
-                (filter.coordinatesY == null || o.coordinates.y == filter.coordinatesY) &&
-                (filter.creationDate == null || o.creationDate == filter.creationDate) &&
-                (filter.annualTurnover == null || o.annualTurnover == filter.annualTurnover) &&
-                (filter.fullName == null || o.fullName == filter.fullName) &&
-                (filter.type == null || o.type == filter.type) &&
-                (filter.street == null || o.postalAddress.street == filter.street)
+                    (filter.coordinatesX == null || o.coordinates.x == filter.coordinatesX) &&
+                    (filter.coordinatesY == null || o.coordinates.y == filter.coordinatesY) &&
+                    (filter.creationDate == null || o.creationDate == filter.creationDate) &&
+                    (filter.annualTurnover == null || o.annualTurnover == filter.annualTurnover) &&
+                    (filter.fullName == null || o.fullName == filter.fullName) &&
+                    (filter.type == null || o.type == filter.type) &&
+                    (filter.street == null || o.postalAddress.street == filter.street)
         }
         if (sortBy.isNotEmpty()) {
-            rows = rows.sortedWith(Comparator { a, b ->
-                var result = 0
-                for (field in sortBy) {
-                    result = compare(field, a, b)
-                    if (result != 0) break
-                }
-                if (descending) -result else result
-            })
+            rows = rows.sortedWith(
+                Comparator { a, b ->
+                    var result = 0
+                    for (field in sortBy) {
+                        result = compare(field, a, b)
+                        if (result != 0) break
+                    }
+                    if (descending) -result else result
+                },
+            )
         }
         val offset = ((page - 1L) * size).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         return OrganizationPage(rows.size, page, size, rows.drop(offset).take(size))
@@ -90,8 +98,14 @@ class OrganizationService : OrganizationRemote {
     private fun validate(input: OrganizationInput) {
         if (!input.coordinates.x.isFinite()) throw ServiceFault(400, "coordinates.x должен быть конечным числом")
         if (input.name.isEmpty()) throw ServiceFault(400, "Поле name не может быть пустым")
-        if (input.annualTurnover != null && input.annualTurnover <= 0) throw ServiceFault(400, "annualTurnover должен быть больше 0")
-        if (input.postalAddress.street.length > 158) throw ServiceFault(400, "postalAddress.street не может быть длиннее 158 символов")
+        if (input.annualTurnover != null && input.annualTurnover <= 0) throw ServiceFault(
+            400,
+            "annualTurnover должен быть больше 0",
+        )
+        if (input.postalAddress.street.length > 158) throw ServiceFault(
+            400,
+            "postalAddress.street не может быть длиннее 158 символов",
+        )
     }
 
     private fun compare(field: String, a: Organization, b: Organization): Int = when (field) {
@@ -108,7 +122,8 @@ class OrganizationService : OrganizationRemote {
 
     override fun employees(organizationId: Int) = employeeService.list(organizationId)
     override fun addEmployee(organizationId: Int, input: EmployeeInput) = employeeService.add(organizationId, input)
-    override fun deleteEmployee(organizationId: Int, employeeId: Int) = employeeService.delete(organizationId, employeeId)
+    override fun deleteEmployee(organizationId: Int, employeeId: Int) =
+        employeeService.delete(organizationId, employeeId)
 
     @field:jakarta.inject.Inject
     private lateinit var employeeService: EmployeeService

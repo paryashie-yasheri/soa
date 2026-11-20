@@ -6,7 +6,14 @@ import ru.ifmo.soa.model.*
 /** Remote business contract shared with the JAX-RS web module. */
 @Remote
 interface OrganizationRemote {
-    fun list(filter: OrganizationFilter, sortBy: List<String>, descending: Boolean, page: Int, size: Int): OrganizationPage
+    fun list(
+        filter: OrganizationFilter,
+        sortBy: List<String>,
+        descending: Boolean,
+        page: Int,
+        size: Int,
+    ): OrganizationPage
+
     fun get(id: Int): Organization
     fun create(input: OrganizationInput): Organization
     fun update(id: Int, input: OrganizationInput): Organization

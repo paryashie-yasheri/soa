@@ -106,7 +106,7 @@ public enum OrganizationType {
 
 # WildFly deployment
 
-`./deploy-wildfly.sh` builds and deploys both JAX-RS WARs to Helios. All runtime
+`./deploy-wildfly.sh` builds and deploys the organization EAR and Spring Boot caller to Helios. All runtime
 files, scripts, TLS material, logs and configuration live in `~/soa-lab2`.
 The React 19 frontend is built with Bun, Vite, shadcn UI components, and
 TanStack Query/Table, then rendered into static HTML and packaged with its assets in `ui.war`.
@@ -140,15 +140,17 @@ bun run preview
 
 Development requests to `/organizations` and `/orgdirectory` are proxied to
 `https://localhost:61811` (including an SSH tunnel). Accept the browser's self-signed
-certificate when accessing a deployed API directly. Set `VITE_API_BASE` to an API
-origin when hosting the frontend separately; deployment defaults to the same origin.
+certificate when accessing a deployed API directly. The Helios deployment builds the UI
+with `VITE_API_BASE=https://$PUBLIC_HOST:61815`, so its requests use the HAProxy gateway
+even though WildFly serves the UI assets. For another frontend host, set `VITE_API_BASE`
+to the API gateway origin.
 The frontend uses the generated schema types from `frontend/src/generated/` and a
 small XML adapter, since these APIs exchange XML rather than JSON.
 
-- UI: `https://se.ifmo.ru:61811/ui/`
-- Swagger UI: `https://se.ifmo.ru:61811/ui/docs/`
-- Organizations: `https://se.ifmo.ru:61811/organizations`
-- Directory: `https://se.ifmo.ru:61811/orgdirectory/order/name/false`
+- UI and Swagger UI: `https://se.ifmo.ru:61815/ui/` and `/ui/docs/`
+- Organization API through the gateway: `https://se.ifmo.ru:61815/organizations`
+- Directory API through the gateway: `https://se.ifmo.ru:61815/orgdirectory/order/name/false`
+- Direct WildFly backend: `https://se.ifmo.ru:61811/organizations`
 
 The HTTPS certificate is self-signed. On Helios, HAProxy accepts both protocols on
 public port 61811: plain HTTP receives a 308 redirect to HTTPS with the same host,

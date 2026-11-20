@@ -1,7 +1,7 @@
 package ru.ifmo.soa.model
 
-import java.time.LocalDate
 import java.io.Serializable
+import java.time.LocalDate
 
 enum class OrganizationType { COMMERCIAL, TRUST, PRIVATE_LIMITED_COMPANY, OPEN_JOINT_STOCK_COMPANY }
 
@@ -15,7 +15,7 @@ data class OrganizationInput(
     val annualTurnover: Int?,
     val fullName: String?,
     val type: OrganizationType,
-    val postalAddress: Address
+    val postalAddress: Address,
 ) : Serializable
 
 data class Organization(
@@ -26,7 +26,7 @@ data class Organization(
     val annualTurnover: Int?,
     val fullName: String?,
     val type: OrganizationType,
-    val postalAddress: Address
+    val postalAddress: Address,
 ) : Serializable
 
 data class EmployeeInput(val name: String, val position: String?, val salary: Double?) : Serializable
@@ -36,7 +36,7 @@ data class Employee(
     val organizationId: Int,
     val name: String,
     val position: String?,
-    val salary: Double?
+    val salary: Double?,
 ) : Serializable
 
 data class OrganizationFilter(
@@ -48,7 +48,7 @@ data class OrganizationFilter(
     val annualTurnover: Int? = null,
     val fullName: String? = null,
     val type: OrganizationType? = null,
-    val street: String? = null
+    val street: String? = null,
 ) : Serializable
 
 data class OrganizationPage(val total: Int, val page: Int, val size: Int, val items: List<Organization>) : Serializable

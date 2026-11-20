@@ -18,7 +18,8 @@ class ConsulRegistration {
     fun register() {
         val host = System.getProperty("soa.consul.service.address", "127.0.0.1")
         val port = System.getProperty("soa.consul.service.port", "61811").toInt()
-        val json = """{"ID":"${escape(serviceId)}","Name":"soa-organizations","Address":"${escape(host)}","Port":$port,"Tags":["soa","organizations","lab3"]}"""
+        val json =
+            """{"ID":"${escape(serviceId)}","Name":"soa-organizations","Address":"${escape(host)}","Port":$port,"Tags":["soa","organizations","lab3"]}"""
         var lastFailure: Exception? = null
         repeat(30) {
             try {
